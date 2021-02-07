@@ -13,7 +13,7 @@ import pytesseract as pta
 
 # Config
 pta.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-path_gs = r"C:\Program Files\gs\gs9.53.3\bin\gswin64.exe"  # TODO: must be made available to pdf_compressor
+ghostscript_path = r"C:\Program Files\gs\gs9.53.3\bin\gswin64.exe"
 
 file_path_jpg_raw = "./2020_B_Jpg/"
 file_path_jpg_crop = "./2020_C_filtered/"
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     sheet.open_picture(file_items[0].path)
     #sheet.demo_enhance_details()
 
-    pdfc = CompressPDF(2, show_info=False)
+    pdfc = CompressPDF(2, ghostscript_path, show_info=False)
 
     for file in file_items:
         print(f"processing {file.name}")
@@ -93,6 +93,7 @@ if __name__ == '__main__':
         sheet.crop()
         sheet.enhance_details(55)
         sheet.save(file_path_jpg_crop + file.name)
+        #dpi = sheet.get_dpi()
 
         file_name_pdf = ".".join(file.name.split(".")[:-1]) + ".pdf"
 

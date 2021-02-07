@@ -31,8 +31,14 @@ import argparse
 
 
 class CompressPDF:
-    def __init__(self, compress_level=0, show_info=False):
+
+    def __init__(self, compress_level=0, ghostscript_path: str = None, show_info=False):
         self.compress_level = compress_level
+
+        if ghostscript_path is None:
+            self.gs_path = "gs"
+        else:
+            self.gs_path = ghostscript_path
 
         self.quality = {
             0: '/default',
@@ -44,7 +50,7 @@ class CompressPDF:
 
         self.show_compress_info = show_info
 
-    def compress(self, file=None, new_file=None):
+    def compress(self, file=None, new_file=None, dpi: int = None):
         """
         Function to compress PDF via Ghostscript command line interface
         :param file: old file that needs to be compressed
@@ -65,13 +71,18 @@ class CompressPDF:
             if self.show_compress_info:
                 initial_size = os.path.getsize(file)
 
-            subprocess.call(['gs', '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.4',
-                            '-dPDFSETTINGS={}'.format(self.quality[self.compress_level]),
-                            '-dNOPAUSE', '-dQUIET', '-dBATCH',
-                            '-sOutputFile={}'.format(new_file),
-                             file]
-            )
+            pre_opt = [self.gs_path,
+                       '-sDEVICE=pdfwrite',
+                       '-dCompatibilityLevel=1.4',
+                       '-dPDFSETTINGS={}'.format(self.quality[self.compress_level]),
+                       '-dNOPAUSE',
+                       '-dQUIET',
+                       '-dBATCH']
 
+            if dpi is not None:
+                pre_opt.append([f'-r{dpi}', '-dPDFFitPage'])
+
+            subprocess.call(pre_opt + ['-sOutputFile={}'.format(new_file), file])
 
             if self.show_compress_info:
                 final_size = os.path.getsize(new_file)
