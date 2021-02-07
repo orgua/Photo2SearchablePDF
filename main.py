@@ -20,7 +20,6 @@ file_path_jpg_crop = "./2020_C_filtered/"
 file_path_pdf_pta = "./2020_D_pdf/"
 file_path_pdf_cmp = "./2020_E_pdfc/"
 
-file_path = "2021_DocTest/2021-02-05_20-05-19__DSC3928.jpg"
 language = "deu"
 paper_format_mm = (210, 297)
 
@@ -85,15 +84,13 @@ if __name__ == '__main__':
             continue
 
         sheet.crop()
-        sheet.enhance_details(55)
+        sheet.enhance_details(55)  # TODO: should be named: turn B/W
         sheet.save(file_path_jpg_crop + file.name)
         doc_size = sheet.get_size_mm()
 
         file_name_pdf = ".".join(file.name.split(".")[:-1]) + ".pdf"
 
         ocr_pdf(sheet.export_for_tesseract(), file_path_pdf_pta + file_name_pdf)
-
-        filenameA = ".".join(file_path.split(".")[:-1]) + ".pdf"
 
         pdfc.compress(file_path_pdf_pta + file_name_pdf, file_path_pdf_cmp + file_name_pdf, doc_size)
 
@@ -103,4 +100,4 @@ if __name__ == '__main__':
         with open(file_path_pdf_cmp + file_name_txt, 'wb') as f:
             f.write(text_content.encode("utf-8-sig"))
 
-        print(f"   -> took {round(time.time() - timestamp_start,2)} s")
+        print(f" -> took {round(time.time() - timestamp_start,2)} s")

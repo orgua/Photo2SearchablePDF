@@ -74,12 +74,16 @@ class CompressPDF:
 
             pre_opt = [self.gs_path,
                        '-sDEVICE=pdfwrite',
-                       '-dCompatibilityLevel=1.4',
                        '-dPDFSETTINGS={}'.format(self.quality[self.compress_level]),
+                       '-dCompatibilityLevel=1.7',
                        '-dNOPAUSE',
                        '-dQUIET',
                        '-dBATCH']
 
+            # Proper PDF Controls and Features: https://www.ghostscript.com/doc/current/VectorDevices.htm
+            # -dColorConversionStrategy=/Gray -dProcessColorModel=/DeviceGray
+            # -dPrinted=false -> Preserve hyperlinks
+            # TODO: switch to do black/white
             if page_size_mm is not None:
                 pre_opt += [f'-dDEVICEWIDTHPOINTS={round(page_size_mm[0] * 72 / 25.4)}',
                             f'-dDEVICEHEIGHTPOINTS={round(page_size_mm[1] * 72 / 25.4)}',
