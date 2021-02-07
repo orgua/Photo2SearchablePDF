@@ -22,6 +22,7 @@ Prototype for a dynamic archival-system to get rid of paper.
 - detect keywords (company-names, invoice) and date
 - merge several pages together
 - auto-rename for archive, something like: date_company_subject
+- multicore, processing is currently singlecore and takes ~ 9 s per image
 
 ## Example
 
