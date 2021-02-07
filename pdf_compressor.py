@@ -50,26 +50,27 @@ class CompressPDF:
 
         self.show_compress_info = show_info
 
-    def compress(self, file=None, new_file=None, dpi: int = None):
+    def compress(self, file_path_in=None, file_path_out=None, page_size_mm: tuple = None):
         """
         Function to compress PDF via Ghostscript command line interface
-        :param file: old file that needs to be compressed
-        :param new_file: new file that is commpressed
+        :param page_size_mm: dimensions width * height in mm
+        :param file_path_in: old file that needs to be compressed
+        :param file_path_out: new file that is commpressed
         :return: True or False, to do a cleanup when needed
         """
         try:
-            if not os.path.isfile(file):
+            if not os.path.isfile(file_path_in):
                 print("Error: invalid path for input PDF file")
                 sys.exit(1)
 
             # Check if file is a PDF by extension
-            filename, file_extension = os.path.splitext(file)
+            filename, file_extension = os.path.splitext(file_path_in)
             if file_extension != '.pdf':
                 raise Exception("Error: input file is not a PDF")
                 return False
 
             if self.show_compress_info:
-                initial_size = os.path.getsize(file)
+                initial_size = os.path.getsize(file_path_in)
 
             pre_opt = [self.gs_path,
                        '-sDEVICE=pdfwrite',
@@ -79,13 +80,15 @@ class CompressPDF:
                        '-dQUIET',
                        '-dBATCH']
 
-            if dpi is not None:
-                pre_opt.append([f'-r{dpi}', '-dPDFFitPage'])
+            if page_size_mm is not None:
+                pre_opt += [f'-dDEVICEWIDTHPOINTS={round(page_size_mm[0] * 72 / 25.4)}',
+                            f'-dDEVICEHEIGHTPOINTS={round(page_size_mm[1] * 72 / 25.4)}',
+                            '-dPDFFitPage']
 
-            subprocess.call(pre_opt + ['-sOutputFile={}'.format(new_file), file])
+            subprocess.call(pre_opt + ['-sOutputFile={}'.format(file_path_out), file_path_in])
 
             if self.show_compress_info:
-                final_size = os.path.getsize(new_file)
+                final_size = os.path.getsize(file_path_out)
                 ratio = 1 - (final_size / initial_size)
                 print("Compression by {0:.0%}.".format(ratio))
                 print("Final file size is {0:.1f}MB".format(final_size / 1000000))

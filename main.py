@@ -22,16 +22,10 @@ file_path_pdf_cmp = "./2020_E_pdfc/"
 
 file_path = "2021_DocTest/2021-02-05_20-05-19__DSC3928.jpg"
 language = "deu"
-paper_format_mm = (210, 297)  # TODO: use as dpi-source for gs
+paper_format_mm = (210, 297)
 
 if not language in pta.get_languages():
     raise ValueError(f"Language '{language}' is currently not supported, choose one of {pta.get_languages()}")
-
-#os.symlink(path_gs, './gs')
-#os.link(path_gs, './gs')
-#subprocess.call(['cmd', '/c', 'mklink', 'gs', path_gs], shell=True)
-#subprocess.call(['mklink', 'gs', path_gs], shell=True)
-# admin-shell: mklink gs.exe "C:\Program Files\gs\gs9.53.3\bin\gswin64.exe"
 
 # TODO:
 # - add lib for compressing pdfs
@@ -93,7 +87,7 @@ if __name__ == '__main__':
         sheet.crop()
         sheet.enhance_details(55)
         sheet.save(file_path_jpg_crop + file.name)
-        #dpi = sheet.get_dpi()
+        doc_size = sheet.get_size_mm()
 
         file_name_pdf = ".".join(file.name.split(".")[:-1]) + ".pdf"
 
@@ -101,7 +95,7 @@ if __name__ == '__main__':
 
         filenameA = ".".join(file_path.split(".")[:-1]) + ".pdf"
 
-        pdfc.compress(file_path_pdf_pta + file_name_pdf, file_path_pdf_cmp + file_name_pdf)
+        pdfc.compress(file_path_pdf_pta + file_name_pdf, file_path_pdf_cmp + file_name_pdf, doc_size)
 
         file_name_txt = ".".join(file.name.split(".")[:-1]) + ".txt"
         text_content = ocr_core(file_path_jpg_crop + file.name)

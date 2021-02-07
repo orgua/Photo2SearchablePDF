@@ -429,6 +429,20 @@ class SheetFilter:
     def save(self, path: str) -> NoReturn:
         cv2.imwrite(path, self.img, params=[int(cv2.IMWRITE_JPEG_QUALITY), 80])
 
+    def get_dpi(self) -> int:
+        sheet_size = sorted(self.sheet_size)
+        img_size = sorted(self.img.shape[::-1])
+        dpi_short = round(25.4 * img_size[0] / sheet_size[0])
+        dpi_long = round(25.4 * img_size[1] / sheet_size[1])
+        return max(dpi_short, dpi_long)
+
+    def get_size_mm(self) -> tuple:
+        # width is the first parameter
+        if self.img_width < self.img_height:
+            return tuple(self.sheet_size)
+        else:
+            return self.sheet_size[1], self.sheet_size[0]
+
     def export_for_tesseract(self) -> np.ndarray:
         img_rgb = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
         return img_rgb
