@@ -1,5 +1,6 @@
 import os
 import time
+from pathlib import Path
 
 from opencv_filtering import SheetFilter
 from pdf_compressor import CompressPDF
@@ -49,9 +50,13 @@ def ocr_pdf_from_file(file_path: str):
 
 def ocr_pdf(image_data, file_path_output: str):
     # Get a searchable PDF
-    pdf = pta.image_to_pdf_or_hocr(image_data, extension='pdf', lang=language)
+    try:
+        pdf = pta.image_to_pdf_or_hocr(image_data, extension='pdf', lang=language)
+    except pta.TesseractError:
+        return False
     with open(file_path_output, 'w+b') as f:
         f.write(pdf)
+    return True
 
 
 def ocr_core(filename):  # TODO: use image data directly
@@ -74,6 +79,12 @@ if __name__ == '__main__':
     pdfc = CompressPDF(2, ghostscript_path, show_info=False)
 
     for file in file_items:
+        # use the fast-lane if image exists
+        file_name_pdf = ".".join(file.name.split(".")[:-1]) + ".pdf"
+        if Path(file_path_pdf_cmp + file_name_pdf).exists():
+            print(f"skipping {file.name} because resulting pdf already exists")
+            continue
+
         print(f"processing {file.name}")
         timestamp_start = time.time()
 
@@ -88,9 +99,10 @@ if __name__ == '__main__':
         sheet.save(file_path_jpg_crop + file.name)
         doc_size = sheet.get_size_mm()
 
-        file_name_pdf = ".".join(file.name.split(".")[:-1]) + ".pdf"
-
-        ocr_pdf(sheet.export_for_tesseract(), file_path_pdf_pta + file_name_pdf)
+        response = ocr_pdf(sheet.export_for_tesseract(), file_path_pdf_pta + file_name_pdf)
+        if not response:
+            print(f"   -> OCR found no text in image, will skip pdf-generation")
+            continue
 
         pdfc.compress(file_path_pdf_pta + file_name_pdf, file_path_pdf_cmp + file_name_pdf, doc_size)
 
