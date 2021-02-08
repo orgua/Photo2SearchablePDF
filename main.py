@@ -1,16 +1,17 @@
 import os
 import time
+from datetime import date
 from pathlib import Path
-
-from opencv_filtering import SheetFilter
-from pdf_compressor import CompressPDF
-
-try:
-    from PIL import Image
-except ImportError:
-    import Image
+from typing import List
 
 import pytesseract as pta
+from dateparser.search import search_dates
+from langid.langid import LanguageIdentifier, model
+
+from framework_ocr import ocr_pdf, ocr_osd, ocr_text
+from opencv_filtering import SheetFilter
+from pdf_compressor import CompressPDF
+from rake_nltk import Rake  # TODO: nltk needs a post-setup: python -c "import nltk; nltk.download('stopwords')"
 
 # Config
 pta.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -20,51 +21,63 @@ file_path_jpg_raw = "./2020_B_Jpg/"
 file_path_jpg_crop = "./2020_C_filtered/"
 file_path_pdf_pta = "./2020_D_pdf/"
 file_path_pdf_cmp = "./2020_E_pdfc/"
+file_path_text = "./2020_F_txt/"
 
-language = "deu"
+languages = ["deu", "eng"]  # tesseract-format, mixing is possible
 paper_format_mm = (210, 297)
 
-if not language in pta.get_languages():
-    raise ValueError(f"Language '{language}' is currently not supported, choose one of {pta.get_languages()}")
+# dateparser should only take full
+dateparser_settings = {'STRICT_PARSING': True,
+                       'REQUIRE_PARTS': ['day', 'month', 'year'],
+                       'PARSERS': ['timestamp', 'absolute-time'],
+                       }
 
-# TODO:
-# - add lib for compressing pdfs
-#   - old: https://github.com/pts/pdfsizeopt
-#   - small sideproject: https://github.com/theeko74/pdfc
-#       - https://itheo.nl/repair-and-compress-pdf-files-with-python/
-#   - pyPDF2 - dead for 4 years https://stackoverflow.com/questions/22776388/pypdf2-compression
-#       - alternatives: https://stackoverflow.com/questions/63199763/maintained-alternatives-to-pypdf2
-#   - commercial pdfTron https://www.pdftron.com/documentation/samples/py/OptimizerTest
-# - improve picture before OCR
-#   - https://github.com/unpaper/unpaper
-#   - pre-recognition lib, https://github.com/leha-bot/PRLib
+custom_keyword_path = "keywords_custom.txt"
 
+date_year_limits = [2010, date.today().year]  # lower and upper threshold
 
-def ocr_pdf_from_file(file_path: str):
-    # Get a searchable PDF
-    pdf = pta.image_to_pdf_or_hocr(file_path, extension='pdf', lang=language)
-    filename = ".".join(file_path.split(".")[:-1]) + ".pdf"
-    with open(filename, 'w+b') as f:
-        f.write(pdf)
+for language in languages:
+    if not language in pta.get_languages():
+        raise ValueError(f"Language '{languages}' is currently not supported, choose one of {pta.get_languages()}")
+languages_pta = "+".join(languages)
+
+langid2nltk_lang_dict = {"de": "german", "en": "english"}
+# TODO: output of one lib does not fit into others
+#   for nltk see https://pypi.org/project/stop-words/
+#   tesseract is even stranger
 
 
-def ocr_pdf(image_data, file_path_output: str):
-    # Get a searchable PDF
-    try:
-        pdf = pta.image_to_pdf_or_hocr(image_data, extension='pdf', lang=language)
-    except pta.TesseractError:
-        return False
-    with open(file_path_output, 'w+b') as f:
-        f.write(pdf)
-    return True
+def import_list(input_file: str) -> List[str]:
+    with open(input_file, "r", encoding="utf-8-sig") as logfile:
+        data = logfile.readlines()
+
+        data = [date[0:date.find("#")] for date in data]  # filter from # anywhere to end of line
+        data = [date.lower() for date in data]
+
+        data = [date.replace("   ", " ") for date in data]  # 3 spaces
+        data = [date.replace("  ", " ") for date in data]  # 2 spaces
+
+        data = [date.replace(" ", " ") for date in data]  # a special space, looks the same..
+        data = [date.replace("	", " ") for date in data]  # TAB
+
+        data = [date.replace("\n", "") for date in data]
+        data = [date.replace("\r", "") for date in data]
+        data = [date.replace(",", " ") for date in data]
+        return data
 
 
-def ocr_core(filename):  # TODO: use image data directly
-    # This function will handle the core OCR processing of images.
-    text = pta.image_to_osd(Image.open(filename), lang=language)
-    text += "\n\n\n\n"
-    text += pta.image_to_string(Image.open(filename), lang=language)
-    return text
+def str_filter(input: str) -> str:
+    input = input.lower()
+    # newlines
+    input = input.replace("\n", "").replace("\r", "")
+    # punctuation
+    input = input.replace(".", " ").replace("!", " ").replace("?", " ").replace(",", " ")
+    # special characters
+    input = input.replace("	", " ")  # TAB
+    input = input.replace(" ", " ")  # a special space, looks the same..
+    input = input.replace("   ", " ")  # 3 spaces
+    input = input.replace("  ", " ")  # 2 spaces
+    return input
 
 
 if __name__ == '__main__':
@@ -77,6 +90,8 @@ if __name__ == '__main__':
     #sheet.demo_enhance_details()
 
     pdfc = CompressPDF(2, ghostscript_path, show_info=False)
+    lang_id = LanguageIdentifier.from_modelstring(model, norm_probs=True)
+    custom_keywords = import_list(custom_keyword_path)
 
     for file in file_items:
         # use the fast-lane if image exists
@@ -99,17 +114,68 @@ if __name__ == '__main__':
         sheet.save(file_path_jpg_crop + file.name)
         doc_size = sheet.get_size_mm()
 
-        response = ocr_pdf(sheet.export_for_tesseract(), file_path_pdf_pta + file_name_pdf)
+        response = ocr_pdf(sheet.export_for_tesseract(), file_path_pdf_pta + file_name_pdf, languages_pta)
         if not response:
             print(f"   -> OCR found no text in image, will skip pdf-generation")
             continue
 
         pdfc.compress(file_path_pdf_pta + file_name_pdf, file_path_pdf_cmp + file_name_pdf, doc_size)
 
+        # extract meta-data
         file_name_txt = ".".join(file.name.split(".")[:-1]) + ".txt"
-        text_content = ocr_core(file_path_jpg_crop + file.name)
+        text_osd = ocr_osd(file_path_jpg_crop + file.name, languages_pta)
+        text_ocr = ocr_text(file_path_jpg_crop + file.name, languages_pta)
+        text_filtered = str_filter(text_ocr)
 
-        with open(file_path_pdf_cmp + file_name_txt, 'wb') as f:
+        try:
+            text_lang = lang_id.classify(text_ocr)  # TODO for later: rerun ocr with proper language
+        except KeyError:
+            text_lang = ("en", 0.0)
+
+        rake = Rake(language=langid2nltk_lang_dict[text_lang[0]], min_length=1, max_length=4)
+        rake.extract_keywords_from_text(text_ocr)
+        text_keywords = rake.get_ranked_phrases()
+        text_dates = search_dates(text_ocr, settings=dateparser_settings, languages=[text_lang[0]], add_detected_language=True)
+
+        # limit dates
+        if text_dates:
+            text_datetimes = [x[1] for x in text_dates]
+            # TODO: further limit / filter dates for plausibility - e.g. span of last 5 +- 5 years
+            text_datetimes = [x for x in text_datetimes if x.year >= date_year_limits[0]]
+            text_datetimes = [x for x in text_datetimes if x.year <= date_year_limits[1]]
+            text_datetimes = sorted(text_datetimes, key=lambda p: p.timestamp(), reversed=True)
+            if text_datetimes:
+                date_stamp = text_datetimes[0].strftime("%Y-%m-%d")
+            else:
+                date_stamp = "none"
+        else:
+            date_stamp = "none"
+
+        text_custom_keywords = list([])
+        for keyword in custom_keywords:
+            if text_filtered.find(keyword) > 0:
+                text_custom_keywords.append(keyword)
+
+
+        print(f" -> date={date_stamp}, lang={text_lang[0]}, keywords={text_custom_keywords}")
+
+        text_content = "### Metadata ###\n" +\
+                       f"date: {text_dates}\n" +\
+                       f"language: {text_lang}\n" +\
+                       f"keywords: {text_keywords}\n" +\
+                       f"custom keywords: {text_custom_keywords}\n" + "\n\n\n\n" +\
+                       "### STATISTICS / OSD ###\n" +\
+                       text_osd + "\n\n\n\n" + \
+                       "### TEXT ###\n" +\
+                       text_ocr
+
+        if text_custom_keywords:
+            file_name_txt = date_stamp + " " + " ".join(text_custom_keywords) + ".txt"
+        else:
+            file_name_txt = date_stamp + " " + file_name_txt
+
+        # TODO: check if file exists
+        with open(file_path_text + file_name_txt, 'wb') as f:
             f.write(text_content.encode("utf-8-sig"))
 
         print(f" -> took {round(time.time() - timestamp_start,2)} s")
