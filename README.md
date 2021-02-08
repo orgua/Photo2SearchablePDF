@@ -10,19 +10,30 @@ Prototype for a dynamic archival-system to get rid of paper.
 - detect text and produce a pdf with searchable invisible text overlay
 - recompress pdf and correct paper-size
 - input images with 10 MiB get compressed to ~ 200 - 600 kiB PDFs, still containing the image data
+- detect date, language and custom keywords
 
-### Preconditions: 
+### Preconditions
 
 - photos of documents on dark background
 - installed ghostscript for improved pdf compression
 - installed tesseract for OCR
 
+### Howto
+
+- currently, only command line without interface
+- configure 
+    - main language
+    - input folder and folders for temp-data and final results
+    - paper format
+    - access to tesseract and ghostscript installation (if installed correctly command "gs" and "tesseract" should be enough)
+
 ### planned features for the future
 
-- detect keywords (company-names, invoice) and date
+- improve keyword-detection
 - merge several pages together
 - auto-rename for archive, something like: date_company_subject
 - multicore, processing is currently singlecore and takes ~ 9 s per image
+- improve page-detection (edge-detection)
 
 ## Example
 
