@@ -21,7 +21,8 @@ file_path_jpg_raw = "./2020_B_Jpg/"
 file_path_jpg_crop = "./2020_C_filtered/"
 file_path_pdf_pta = "./2020_D_pdf/"
 file_path_pdf_cmp = "./2020_E_pdfc/"
-file_path_text = "./2020_F_txt/"
+file_path_named = "./2020_F_named/"
+# TODO: these folder have to be created manually, currently
 
 languages = ["deu", "eng"]  # tesseract-format, mixing is possible
 paper_format_mm = (210, 297)
@@ -52,7 +53,7 @@ def import_list(input_file: str) -> List[str]:
         data = logfile.readlines()
 
         data = [date[0:date.find("#")] for date in data]  # filter from # anywhere to end of line
-        data = [date.lower() for date in data]
+        #data = [date.lower() for date in data]
 
         data = [date.replace("   ", " ") for date in data]  # 3 spaces
         data = [date.replace("  ", " ") for date in data]  # 2 spaces
@@ -63,6 +64,8 @@ def import_list(input_file: str) -> List[str]:
         data = [date.replace("\n", "") for date in data]
         data = [date.replace("\r", "") for date in data]
         data = [date.replace(",", " ") for date in data]
+        data = [date.strip() for date in data]  # remove whitespace from beginning and end
+        data = [date for date in data if len(date) > 0]
         return data
 
 
@@ -91,7 +94,11 @@ if __name__ == '__main__':
 
     pdfc = CompressPDF(2, ghostscript_path, show_info=False)
     lang_id = LanguageIdentifier.from_modelstring(model, norm_probs=True)
-    custom_keywords = import_list(custom_keyword_path)
+
+    if Path(custom_keyword_path).exists():
+        custom_keywords = import_list(custom_keyword_path)
+    else:
+        custom_keywords = list([])
 
     for file in file_items:
         # use the fast-lane if image exists
@@ -137,13 +144,13 @@ if __name__ == '__main__':
         text_keywords = rake.get_ranked_phrases()
         text_dates = search_dates(text_ocr, settings=dateparser_settings, languages=[text_lang[0]], add_detected_language=True)
 
-        # limit dates
+        # limit dates and sort from newest to oldest
         if text_dates:
             text_datetimes = [x[1] for x in text_dates]
             # TODO: further limit / filter dates for plausibility - e.g. span of last 5 +- 5 years
             text_datetimes = [x for x in text_datetimes if x.year >= date_year_limits[0]]
             text_datetimes = [x for x in text_datetimes if x.year <= date_year_limits[1]]
-            text_datetimes = sorted(text_datetimes, key=lambda p: p.timestamp(), reversed=True)
+            text_datetimes = sorted(text_datetimes, key=lambda p: p.timestamp(), reverse=True)
             if text_datetimes:
                 date_stamp = text_datetimes[0].strftime("%Y-%m-%d")
             else:
@@ -153,9 +160,8 @@ if __name__ == '__main__':
 
         text_custom_keywords = list([])
         for keyword in custom_keywords:
-            if text_filtered.find(keyword) > 0:
+            if text_filtered.find(keyword.lower()) >= 0:
                 text_custom_keywords.append(keyword)
-
 
         print(f" -> date={date_stamp}, lang={text_lang[0]}, keywords={text_custom_keywords}")
 
@@ -170,12 +176,16 @@ if __name__ == '__main__':
                        text_ocr
 
         if text_custom_keywords:
-            file_name_txt = date_stamp + " " + " ".join(text_custom_keywords) + ".txt"
+            file_name_txt = date_stamp + " " + " - ".join(text_custom_keywords) + ".txt"
+            file_name_pdfc = date_stamp + " " + " - ".join(text_custom_keywords) + ".pdf"
         else:
             file_name_txt = date_stamp + " " + file_name_txt
+            file_name_pdfc = date_stamp + " " + file_name_pdf
+
+        pdfc.compress(file_path_pdf_pta + file_name_pdf, file_path_named + file_name_pdfc, doc_size)
 
         # TODO: check if file exists
-        with open(file_path_text + file_name_txt, 'wb') as f:
+        with open(file_path_named + file_name_txt, 'wb') as f:
             f.write(text_content.encode("utf-8-sig"))
 
         print(f" -> took {round(time.time() - timestamp_start,2)} s")
