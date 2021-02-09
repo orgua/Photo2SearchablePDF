@@ -15,7 +15,7 @@ from rake_nltk import Rake  # TODO: nltk needs a post-setup: python -c "import n
 
 # Config
 pta.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-ghostscript_path = r"C:\Program Files\gs\gs9.53.3\bin\gswin64.exe"
+ghostscript_path = r"C:\Program Files\gs\gs9.53.3\bin\gswin64c.exe"  # +c is the console version
 
 file_path_jpg_raw = "./2020_B_Jpg/"
 file_path_jpg_crop = "./2020_C_filtered/"
@@ -30,7 +30,8 @@ paper_format_mm = (210, 297)
 # dateparser should only take full
 dateparser_settings = {'STRICT_PARSING': True,
                        'REQUIRE_PARTS': ['day', 'month', 'year'],
-                       'PARSERS': ['timestamp', 'absolute-time'],
+                       'PREFER_LOCALE_DATE_ORDER': True,
+                       'PARSERS': ['custom-formats', 'absolute-time'],  # custom-formats, timestamp
                        }
 
 custom_keyword_path = "keywords_custom.txt"
@@ -117,7 +118,7 @@ if __name__ == '__main__':
             continue
 
         sheet.crop()
-        sheet.enhance_details(55)  # TODO: should be named: turn B/W
+        sheet.enhance_details(darken_percent=50)  # TODO: should be named: turn B/W
         sheet.save(file_path_jpg_crop + file.name)
         doc_size = sheet.get_size_mm()
 
@@ -139,6 +140,11 @@ if __name__ == '__main__':
         except KeyError:
             text_lang = ("en", 0.0)
 
+        if text_lang[0] not in langid2nltk_lang_dict:
+            print(f"  -> WARNING: had an unknown language: {text_lang}")
+            text_lang = ("en", 0.0)
+
+
         rake = Rake(language=langid2nltk_lang_dict[text_lang[0]], min_length=1, max_length=4)
         rake.extract_keywords_from_text(text_ocr)
         text_keywords = rake.get_ranked_phrases()
@@ -148,7 +154,8 @@ if __name__ == '__main__':
         if text_dates:
             text_datetimes = [x[1] for x in text_dates]
             # TODO: further limit / filter dates for plausibility - e.g. span of last 5 +- 5 years
-            text_datetimes = [x for x in text_datetimes if x.year >= date_year_limits[0]]
+            # TODO: trouble with switched month / day on timestamps with day < 13, e.g. 02.12.2020
+            text_datetimes = [x for x in text_datetimes if x.year >= 1971]
             text_datetimes = [x for x in text_datetimes if x.year <= date_year_limits[1]]
             text_datetimes = sorted(text_datetimes, key=lambda p: p.timestamp(), reverse=True)
             if text_datetimes:
@@ -166,6 +173,7 @@ if __name__ == '__main__':
         print(f" -> date={date_stamp}, lang={text_lang[0]}, keywords={text_custom_keywords}")
 
         text_content = "### Metadata ###\n" +\
+                       f"file: {file_name_pdf}\n" +\
                        f"date: {text_dates}\n" +\
                        f"language: {text_lang}\n" +\
                        f"keywords: {text_keywords}\n" +\
