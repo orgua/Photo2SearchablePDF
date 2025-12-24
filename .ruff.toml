@@ -1,0 +1,49 @@
+line-length = 100
+output-format = "concise"
+
+[lint]
+select = ["ALL"]
+ignore = [
+    "N802", "N803", "N806", "N815", "N816", # naming (si-units should stay)
+    "PLR2004", # magic values
+    "PLR0904", "PLR0911", "PLR0912", "PLR0913", "PLR0915", # complexity
+    "C901", # complexity
+    "ANN401",  # Any as valid type
+    "COM812", # trailing comma, same line
+    "TD002", "TD003", "TD005", "FIX002",  # TODOs
+    "D105", "D107", # docstring in magic methods & init
+    "COM812", "ISC001", # conflicts with formatter
+    "D203", "D212", "D213", "D214", "D215",  # conflicts with PEP257-convention (A)
+    "D404", "D405", "D406", "D407", "D408", "D409",  # conflicts with PEP257-convention (B)
+    "D410", "D411", "D413", "D415", "D416", "D417",  # conflicts with PEP257-convention (C)
+    "EM101", "TRY003", "TRY400",  # xpt & strings
+    "CPY001",  # copyright in every file
+    # TODO: for releasing now - do add documentation later
+    "D102",
+    "DOC201", "DOC402", "DOC501",
+]
+exclude = ["extra/link-visualizer/create_link_svg.py"]  # must be adapted to project first
+
+[lint.per-file-ignores]
+"*/tests/**" = ["ARG", "S", "D", "T201"]
+"*/examples/**" = [
+    "INP001", # no namespace
+    "T201",   # allow print
+]
+"scratch/**" = ["ERA001", "D101", "T201", "T203", "S", ]
+
+[lint.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+[lint.isort]
+force-single-line = true
+
+[lint.pyupgrade]
+keep-runtime-typing = true
+
+[lint.pydocstyle]
+convention = "pep257"
+
+[format] # per default like Black
+docstring-code-format = true
