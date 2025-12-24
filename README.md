@@ -2,7 +2,7 @@
 
 Prototype for a dynamic archival-system to get rid of paper.
 
-### What it already can do 
+### What it already can do
 
 - correct perspective by detecting corners -> transform to preset paper-size
 - crop to page, with additional crop-parameter to get rid of page-edges
@@ -21,7 +21,7 @@ Prototype for a dynamic archival-system to get rid of paper.
 ### Howto
 
 - currently, only command line without interface
-- configure 
+- configure
     - main language
     - input folder and folders for temp-data and final results
     - paper format

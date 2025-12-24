@@ -1,4 +1,4 @@
-## Subtasks 
+## Subtasks
 - **bold** versions are currently used in this project
 
 ### compress PDFs
@@ -7,7 +7,7 @@
 - [pdfc](https://github.com/theeko74/pdfc) - small sideproject
   - [usage Example](https://itheo.nl/repair-and-compress-pdf-files-with-python/)
   - **[CompressPDF](https://github.com/tvdsluijs/pdfc) - more modern Version**
-- [pyPDF2](https://stackoverflow.com/questions/22776388/pypdf2-compression) - dead for 4 years 
+- [pyPDF2](https://stackoverflow.com/questions/22776388/pypdf2-compression) - dead for 4 years
     - [List of alternatives](https://stackoverflow.com/questions/63199763/maintained-alternatives-to-pypdf2)
 - [pdfTron](https://www.pdftron.com/documentation/samples/py/OptimizerTest) - commercial
 
@@ -16,7 +16,7 @@
 - [unpaper](https://github.com/unpaper/unpaper)
 - [pre-recognition lib](https://github.com/leha-bot/PRLib)
 - [scantailor](https://github.com/4lex4/scantailor-advanced#-scantailor-advanced)
-- **openCV2** with custom filters 
+- **openCV2** with custom filters
 
 ### Detect Language
 

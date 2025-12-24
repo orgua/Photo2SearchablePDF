@@ -24,14 +24,14 @@ Compression levels:
 Dependency: Ghostscript.
 On MacOSX install via command line `brew install ghostscript`.
 """
-import subprocess
-import os.path
-import sys
+
 import argparse
+import os.path
+import subprocess
+import sys
 
 
 class CompressPDF:
-
     def __init__(self, compress_level=0, ghostscript_path: str = None, show_info=False):
         self.compress_level = compress_level
 
@@ -40,13 +40,7 @@ class CompressPDF:
         else:
             self.gs_path = ghostscript_path
 
-        self.quality = {
-            0: '/default',
-            1: '/prepress',
-            2: '/printer',
-            3: '/ebook',
-            4: '/screen'
-        }
+        self.quality = {0: "/default", 1: "/prepress", 2: "/printer", 3: "/ebook", 4: "/screen"}
 
         self.show_compress_info = show_info
 
@@ -55,7 +49,7 @@ class CompressPDF:
         Function to compress PDF via Ghostscript command line interface
         :param page_size_mm: dimensions width * height in mm
         :param file_path_in: old file that needs to be compressed
-        :param file_path_out: new file that is commpressed
+        :param file_path_out: new file that is compressed
         :return: True or False, to do a cleanup when needed
         """
         try:
@@ -65,57 +59,66 @@ class CompressPDF:
 
             # Check if file is a PDF by extension
             filename, file_extension = os.path.splitext(file_path_in)
-            if file_extension != '.pdf':
+            if file_extension != ".pdf":
                 raise Exception("Error: input file is not a PDF")
                 return False
 
             if self.show_compress_info:
                 initial_size = os.path.getsize(file_path_in)
 
-            pre_opt = [self.gs_path,
-                       '-sDEVICE=pdfwrite',
-                       '-dPDFSETTINGS={}'.format(self.quality[self.compress_level]),
-                       '-dCompatibilityLevel=1.7',
-                       '-dNOPAUSE',
-                       '-dQUIET',
-                       '-dBATCH']
+            pre_opt = [
+                self.gs_path,
+                "-sDEVICE=pdfwrite",
+                f"-dPDFSETTINGS={self.quality[self.compress_level]}",
+                "-dCompatibilityLevel=1.7",
+                "-dNOPAUSE",
+                "-dQUIET",
+                "-dBATCH",
+            ]
 
             # Proper PDF Controls and Features: https://www.ghostscript.com/doc/current/VectorDevices.htm
             # -dColorConversionStrategy=/Gray -dProcessColorModel=/DeviceGray
             # -dPrinted=false -> Preserve hyperlinks
             # TODO: switch to do black/white
             if page_size_mm is not None:
-                pre_opt += [f'-dDEVICEWIDTHPOINTS={round(page_size_mm[0] * 72 / 25.4)}',
-                            f'-dDEVICEHEIGHTPOINTS={round(page_size_mm[1] * 72 / 25.4)}',
-                            '-dPDFFitPage']
+                pre_opt += [
+                    f"-dDEVICEWIDTHPOINTS={round(page_size_mm[0] * 72 / 25.4)}",
+                    f"-dDEVICEHEIGHTPOINTS={round(page_size_mm[1] * 72 / 25.4)}",
+                    "-dPDFFitPage",
+                ]
 
-            subprocess.call(pre_opt + ['-sOutputFile={}'.format(file_path_out), file_path_in])
+            subprocess.call(pre_opt + [f"-sOutputFile={file_path_out}", file_path_in])
 
             if self.show_compress_info:
                 final_size = os.path.getsize(file_path_out)
                 ratio = 1 - (final_size / initial_size)
-                print("Compression by {0:.0%}.".format(ratio))
-                print("Final file size is {0:.1f}MB".format(final_size / 1000000))
+                print(f"Compression by {ratio:.0%}.")
+                print(f"Final file size is {final_size / 1000000:.1f}MB")
 
             return True
         except Exception as error:
-            print('Caught this error: ' + repr(error))
-        except subprocess.CalledProcessError as e:
-            print("Unexpected error:".format(e.output))
+            print("Caught this error: " + repr(error))
+        except subprocess.CalledProcessError:
+            print("Unexpected error:")
             return False
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='''Welcome to this helpfile. ''',
-        epilog="""Thats all folks!""")
-    parser.add_argument('-sf', '--startFolder', help='Start Folder Domain', required=False, type=str)
-    parser.add_argument('-cl', '--compressLevel', type=int, help='Compression level from 0 to 4', default=2)
-    parser.add_argument('-s', '--showInfo', type=int, help='Show extra compression information 0 or 1', default=0)
+        description="""Welcome to this helpfile. """, epilog="""That's all folks!"""
+    )
+    parser.add_argument(
+        "-sf", "--startFolder", help="Start Folder Domain", required=False, type=str
+    )
+    parser.add_argument(
+        "-cl", "--compressLevel", type=int, help="Compression level from 0 to 4", default=2
+    )
+    parser.add_argument(
+        "-s", "--showInfo", type=int, help="Show extra compression information 0 or 1", default=0
+    )
     args = parser.parse_args()
 
-    '''when where is no start folder full stop!'''
+    """when where is no start folder full stop!"""
     if args.startFolder is not None and args.startFolder != "":
         start_folder = args.startFolder
 
@@ -125,14 +128,14 @@ if __name__ == '__main__':
         if not os.path.exists(compress_folder):
             os.makedirs(compress_folder)
 
-        '''Loop within folder over PDF files'''
+        """Loop within folder over PDF files"""
         for filename in os.listdir(args.startFolder):
             my_name, file_extension = os.path.splitext(filename)
-            if file_extension == '.pdf':
+            if file_extension == ".pdf":
                 file = os.path.join(start_folder, filename)
                 new_file = os.path.join(compress_folder, filename)
 
                 if p.compress(file, new_file):
-                    print("{} done!".format(filename))
+                    print(f"{filename} done!")
                 else:
-                    print("{} gave an error!".format(file))
+                    print(f"{file} gave an error!")

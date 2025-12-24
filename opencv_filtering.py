@@ -4,14 +4,14 @@ import os
 import statistics
 import sys
 from pathlib import Path
-from typing import NoReturn, Tuple, List
-from matplotlib import pyplot as plt
-import numpy as np
+from typing import NoReturn
+
 import cv2
+import numpy as np
+from matplotlib import pyplot as plt
 
 
 class FindFeature:
-
     def __init__(self, path_reference_feature: str, ccw_90deg_rotation_steps: int = 0) -> NoReturn:
         """
         :param path_reference_feature: supply feature, complete or relative path, with .jpg file ending
@@ -37,19 +37,19 @@ class FindFeature:
 
     def save_reference(self, file_path: str) -> NoReturn:
         """
-        process the reference picture and save it to disk
+        Process the reference picture and save it to disk
         :param file_path: complete or relative path, with .jpg file ending
         :return: none
         """
         if file_path[-4:] != ".jpg":
-            sys.exit(f"Error: output file is not specified as jpg")
+            sys.exit("Error: output file is not specified as jpg")
 
         img_result = np.vstack((self.img_ref_raw, self.img_ref_positive))
         cv2.imwrite(file_path, img_result, params=[int(cv2.IMWRITE_JPEG_QUALITY), 90])
 
     def save_find_feature_demo(self, test_file_path: str, save_file_path: str) -> bool:
         """
-        processes test image, find and mark feature if found
+        Processes test image, find and mark feature if found
         :param test_file_path: path to test image, complete or relative, with file ending
         :param save_file_path: complete or relative path, with .jpg file ending
         :return: True if feature was found
@@ -57,7 +57,7 @@ class FindFeature:
         if not Path(test_file_path).exists():
             sys.exit(f"Error: input  file '{test_file_path}' does not exist")
         if save_file_path[-4:] != ".jpg":
-            sys.exit(f"Error: output file is not specified as jpg")
+            sys.exit("Error: output file is not specified as jpg")
 
         # find feature, draw features, save picture
         img_test_raw = cv2.imread(test_file_path, 0)
@@ -71,7 +71,9 @@ class FindFeature:
         for match in matches:
             top_left = (match[0], match[1])
             bot_right = (top_left[0] + self.img_ref_width, top_left[1] + self.img_ref_height)
-            img_test_rect = cv2.rectangle(img_test_raw, top_left, bot_right, color=color, thickness=2)
+            img_test_rect = cv2.rectangle(
+                img_test_raw, top_left, bot_right, color=color, thickness=2
+            )
             color -= color_step
 
         img_result = np.vstack((img_test_positive, img_test_rect))
@@ -82,9 +84,9 @@ class FindFeature:
     @staticmethod
     def smooth_vector(input_vector: np.ndarray, neighbor_span: int) -> np.ndarray:
         """
-        running mean with the help of a cumsum
+        Running mean with the help of a cumsum
         :param input_vector: 1D Vector
-        :param neighbor_span: how far to the left and right you wanna go? window_size = (2 * span + 1)
+        :param neighbor_span: how far to the left and right you want to go? window_size = (2 * span + 1)
         :return: smoothed version of the vector
         """
         cumsum = np.cumsum(np.insert(input_vector, 0, 0))
@@ -96,7 +98,7 @@ class FindFeature:
 
     def enhance_details(self, img_input: np.ndarray, darken_percent: int = 60) -> np.ndarray:
         """
-        exchangeable function that tries to highlight the feature by filtering
+        Exchangeable function that tries to highlight the feature by filtering
         this approach expects an image that biggest surface consists of background
          - find peak in histogram, go down on both sides until one of two things become true
            - current hist-value is larger (rising again)
@@ -113,7 +115,9 @@ class FindFeature:
         light_peak_position = np.argmax(histogram[:127])
         dark_peak_position = np.argmax(histogram[128:]) + 128
 
-        cut_position = round((dark_peak_position - light_peak_position) * darken_percent / 100 + light_peak_position)
+        cut_position = round(
+            (dark_peak_position - light_peak_position) * darken_percent / 100 + light_peak_position
+        )
 
         image_mask = np.zeros_like(img_input)
         image_mask[img_input < cut_position] = 255
@@ -121,7 +125,7 @@ class FindFeature:
 
     def debug_details(self, img_input: np.ndarray) -> NoReturn:
         """
-        analyze histrogram of current processing pipeline
+        Analyze histrogram of current processing pipeline
         :param img_input:
         :return:
         """
@@ -138,13 +142,13 @@ class FindFeature:
 
         histogram = cv2.calcHist([img01], [0], None, [256], [0, 256])
         plt.plot(histogram, label="gauss smoothed")
-        plt.legend(loc='best')
+        plt.legend(loc="best")
         plt.show()
 
     @staticmethod
-    def get_best_feature(feature_list: list) -> Tuple[int, int, float, int, int, float, float]:
+    def get_best_feature(feature_list: list) -> tuple[int, int, float, int, int, float, float]:
         """
-        this means the best feature by score (good if you expect one feature per picture)
+        This means the best feature by score (good if you expect one feature per picture)
         :param feature_list: output of find_feature()
         :return: best feature in list
         """
@@ -160,13 +164,15 @@ class FindFeature:
                 index_highest = index
         return feature_list[index_highest]
 
-    def find_feature(self,
-                     img_test_raw: np.ndarray,
-                     thresholds: Tuple[float, float] = None,
-                     enable_recursion: bool = False,
-                     recursion_depth: int = 0) -> List[Tuple[int, int, float, int, int, float, float]]:
+    def find_feature(
+        self,
+        img_test_raw: np.ndarray,
+        thresholds: tuple[float, float] = None,
+        enable_recursion: bool = False,
+        recursion_depth: int = 0,
+    ) -> list[tuple[int, int, float, int, int, float, float]]:
         """
-        get a list of features on the provided picture
+        Get a list of features on the provided picture
         :param enable_recursion:
         :param img_test_raw:
         :param thresholds: values for positive and negative feature detection
@@ -178,8 +184,12 @@ class FindFeature:
 
         # TODO: copyMakeBorder to even find feature (half) out of frame
 
-        img_match_positive = cv2.matchTemplate(img_test_positive, self.img_ref_positive, self.method)
-        img_match_negative = cv2.matchTemplate(img_test_negative, self.img_ref_negative, self.method)
+        img_match_positive = cv2.matchTemplate(
+            img_test_positive, self.img_ref_positive, self.method
+        )
+        img_match_negative = cv2.matchTemplate(
+            img_test_negative, self.img_ref_negative, self.method
+        )
 
         if thresholds is None:
             thresholds = (self.threshold_positive, self.threshold_negative)
@@ -189,34 +199,47 @@ class FindFeature:
 
         list_match = list([])
         for match_positive in list_match_positive:
-
             for index_negative in range(len(list_match_negative)):
-                match = (math.fabs(match_positive[0] - list_match_negative[index_negative][0]) <= 4) & \
-                        (math.fabs(match_positive[1] - list_match_negative[index_negative][1]) <= 4)
+                match = (
+                    math.fabs(match_positive[0] - list_match_negative[index_negative][0]) <= 4
+                ) & (math.fabs(match_positive[1] - list_match_negative[index_negative][1]) <= 4)
 
                 score = match_positive[2] + list_match_negative[index_negative][2]
                 if match:
-                    feature = copy.deepcopy(match_positive) + copy.deepcopy(
-                        list_match_negative[index_negative]) + copy.deepcopy((score,))
+                    feature = (
+                        copy.deepcopy(match_positive)
+                        + copy.deepcopy(list_match_negative[index_negative])
+                        + copy.deepcopy((score,))
+                    )
                     list_match.append(copy.deepcopy(feature))
                     list_match_negative.pop(index_negative)
                     break
 
         if len(list_match) > 0 or recursion_depth >= 5:
             if recursion_depth > 0:
-                print(f"   -> found {len(list_match)} features at iteration {recursion_depth} "
-                      f"with {np.round(thresholds, 4)} as threshold")
+                print(
+                    f"   -> found {len(list_match)} features at iteration {recursion_depth} "
+                    f"with {np.round(thresholds, 4)} as threshold"
+                )
             return list_match
-        elif enable_recursion:
-            print(f"-> Warning: found no feature in picture with threshold {np.round(thresholds, 4)}, "
-                  f"will try again with lower threshold")
-            return self.find_feature(img_test_raw, (thresholds[0] - 0.1, thresholds[1] - 0.1), enable_recursion, recursion_depth + 1)
-        else:
-            return list_match
+        if enable_recursion:
+            print(
+                f"-> Warning: found no feature in picture with threshold {np.round(thresholds, 4)}, "
+                f"will try again with lower threshold"
+            )
+            return self.find_feature(
+                img_test_raw,
+                (thresholds[0] - 0.1, thresholds[1] - 0.1),
+                enable_recursion,
+                recursion_depth + 1,
+            )
+        return list_match
 
-    def extract_matches(self, img_match: np.ndarray, threshold: float) -> List[Tuple[int, int, float]]:
+    def extract_matches(
+        self, img_match: np.ndarray, threshold: float
+    ) -> list[tuple[int, int, float]]:
         """
-        find features and extract them as a list
+        Find features and extract them as a list
         :param img_match: image
         :param threshold: depending on the method... but it should be between 0 and 1
         :return: meta data of features
@@ -231,7 +254,9 @@ class FindFeature:
             top_left = max_loc
             value = max_val
             match = (value >= threshold) * 1
-            img_match = cv2.circle(img_match, top_left, self.img_ref_radius, color=min_val, thickness=-1)
+            img_match = cv2.circle(
+                img_match, top_left, self.img_ref_radius, color=min_val, thickness=-1
+            )
 
             if match and len(match_list) < 50:
                 match_list.append((top_left[0], top_left[1], value))
@@ -240,9 +265,11 @@ class FindFeature:
 
         return match_list
 
-    def train_feature_threshold(self, image_inp: np.ndarray, expected_features: int = 10) -> NoReturn:
+    def train_feature_threshold(
+        self, image_inp: np.ndarray, expected_features: int = 10
+    ) -> NoReturn:
         """
-        depending on the image and feature quality you can try to adapt the thresholds with this fn
+        Depending on the image and feature quality you can try to adapt the thresholds with this fn
         :param image_inp: complete or relative path, with file ending
         :param expected_features:
         :return:
@@ -251,32 +278,38 @@ class FindFeature:
         def sort_key(element: tuple) -> float:
             return element[6]
 
-        matches = self.find_feature(image_inp, (0.5, 0.6),
-                                    enable_recursion=True)  # TUNE Threshold until a match is found, TODO: try recursive argument, that lowers the threshold automatically
+        matches = self.find_feature(
+            image_inp, (0.5, 0.6), enable_recursion=True
+        )  # TUNE Threshold until a match is found, TODO: try recursive argument, that lowers the threshold automatically
         reverse = True
         matches.sort(key=sort_key, reverse=reverse)
-        matches = matches[:(expected_features + 4)]
-        print(f"found the following feature-matches:")
-        print(f"      x_pos, y_pos, rating_pos, x_neg, y_neg, rating_neg, rating_combined")
+        matches = matches[: (expected_features + 4)]
+        print("found the following feature-matches:")
+        print("      x_pos, y_pos, rating_pos, x_neg, y_neg, rating_neg, rating_combined")
         for index in range(len(matches)):
             if index is expected_features:
-                print(f"      === expected features are above ===")
+                print("      === expected features are above ===")
             print(f"-> {index}: {np.round(matches[index], 4)}")
 
         if len(matches) > expected_features:
             # mean of last known feature and first non-feature + experimental extra 0.1
-            self.threshold_positive = (matches[expected_features - 1][2] + matches[expected_features][
-                2]) / 2 - 0.1  # TODO: use cumulative value, should be much clearer!
-            self.threshold_negative = (matches[expected_features - 1][5] + matches[expected_features][5]) / 2 - 0.1
+            self.threshold_positive = (
+                matches[expected_features - 1][2] + matches[expected_features][2]
+            ) / 2 - 0.1  # TODO: use cumulative value, should be much clearer!
+            self.threshold_negative = (
+                matches[expected_features - 1][5] + matches[expected_features][5]
+            ) / 2 - 0.1
         elif matches and reverse:
             self.threshold_positive = matches[-1][2] - 0.25
             self.threshold_negative = matches[-1][5] - 0.25
-        print(f"Note: trained feature threshold to pos/neg "
-              f"[{round(self.threshold_positive, 4)}; {round(self.threshold_negative, 4)}]")
+        print(
+            f"Note: trained feature threshold to pos/neg "
+            f"[{round(self.threshold_positive, 4)}; {round(self.threshold_negative, 4)}]"
+        )
 
     def statistics_for_features(self, folder_path: str, expected_features: int = 1) -> NoReturn:
         """
-        get an overview over scores for feature-pics in a special folder. best for pre-sorted stacks of files
+        Get an overview over scores for feature-pics in a special folder. best for pre-sorted stacks of files
         :param folder_path: complete or relative path with "/" termination
         :param expected_features: number of features to expect
         :return:
@@ -285,7 +318,9 @@ class FindFeature:
             print("Error: folder-path has to terminated with a '/'.")
             return
 
-        directories_main = [x for x in os.listdir(folder_path) if os.path.isdir(folder_path + x) == False]
+        directories_main = [
+            x for x in os.listdir(folder_path) if os.path.isdir(folder_path + x) == False
+        ]
         matched_counter = 0
         match_scores = []
         miss_scores = []
@@ -302,14 +337,16 @@ class FindFeature:
         print(f"Folder '{folder_path}' had {matched_counter} of {len(directories_main)} matches")
         if len(match_scores) > 0:
             print(
-                f" -> match score is {round(min(match_scores), 3)} min, {round(max(match_scores), 3)} max, {round(statistics.mean(match_scores), 3)} mean")
+                f" -> match score is {round(min(match_scores), 3)} min, {round(max(match_scores), 3)} max, {round(statistics.mean(match_scores), 3)} mean"
+            )
         if len(miss_scores) > 0:
             print(
-                f" -> miss  score is {round(min(miss_scores), 3)} min, {round(max(miss_scores), 3)} max, {round(statistics.mean(miss_scores), 3)} mean")
+                f" -> miss  score is {round(min(miss_scores), 3)} min, {round(max(miss_scores), 3)} max, {round(statistics.mean(miss_scores), 3)} mean"
+            )
 
     def train_masking_of_static_objects(self, file_path: str) -> NoReturn:
         """
-        supply an image with soft background
+        Supply an image with soft background
         you can even provide a BW image, color is not important as long as the background is dominating (in size)
         :param file_path: complete or relative path, with file ending
         :return: None
@@ -324,12 +361,12 @@ class FindFeature:
 
     def save_masking_of_static_objects(self, file_path: str) -> NoReturn:
         """
-        for faster startup you can save the mask
+        For faster startup you can save the mask
         :param file_path: complete or relative path, with .jpg file ending
         :return: None
         """
         if file_path[-4:] != ".jpg":
-            sys.exit(f"Error: output file is not specified as jpg")
+            sys.exit("Error: output file is not specified as jpg")
         cv2.imwrite(file_path, self.img_static_objects, params=[int(cv2.IMWRITE_JPEG_QUALITY), 90])
 
 
@@ -346,8 +383,12 @@ class SheetFilter:
 
     def __init__(self, sheet_size: tuple, edge_crop_percent: float = 2):
         self.feature_path = "feature_paper_edge.png"
-        self.features = [FindFeature(self.feature_path, 0), FindFeature(self.feature_path, 1),
-                         FindFeature(self.feature_path, 2), FindFeature(self.feature_path, 3)]
+        self.features = [
+            FindFeature(self.feature_path, 0),
+            FindFeature(self.feature_path, 1),
+            FindFeature(self.feature_path, 2),
+            FindFeature(self.feature_path, 3),
+        ]
         self.img = None
         self.img_width = 0
         self.img_height = 0
@@ -366,10 +407,11 @@ class SheetFilter:
 
     def train_feature_threshold(self) -> NoReturn:
         for feature in self.features:
-            feature.train_feature_threshold(self.img, expected_features=1) # TODO: optimize this. only load file once
+            feature.train_feature_threshold(
+                self.img, expected_features=1
+            )  # TODO: optimize this. only load file once
 
     def correct_perspective(self) -> bool:
-
         corners = list([])
         for feature in self.features:
             matches = feature.find_feature(self.img, enable_recursion=True)
@@ -377,7 +419,9 @@ class SheetFilter:
             # TODO: optimize this. only load file once
             best_match = feature.get_best_feature(matches)
             if best_match:
-                corners.append([best_match[0] + self.feature_offset, best_match[1] + self.feature_offset])
+                corners.append(
+                    [best_match[0] + self.feature_offset, best_match[1] + self.feature_offset]
+                )
             else:
                 return False
         # origin (0,0) is upper-left corner, x is horizontal, y is vertical
@@ -390,13 +434,21 @@ class SheetFilter:
 
         if length_horizon > length_vertical:
             # vertical paper
-            point_right = round(min(self.img_width, self.img_height/self.sheet_size[0]*self.sheet_size[1]))
-            point_down = round(min(self.img_height, point_right/self.sheet_size[1]*self.sheet_size[0]))
+            point_right = round(
+                min(self.img_width, self.img_height / self.sheet_size[0] * self.sheet_size[1])
+            )
+            point_down = round(
+                min(self.img_height, point_right / self.sheet_size[1] * self.sheet_size[0])
+            )
             ratio_coord = [[0, 0], [0, point_down], [point_right, point_down], [point_right, 0]]
         else:
             # horizontal paper
-            point_right = round(min(self.img_width, self.img_height/self.sheet_size[1]*self.sheet_size[0]))
-            point_down = round(min(self.img_height, point_right/self.sheet_size[0]*self.sheet_size[1]))
+            point_right = round(
+                min(self.img_width, self.img_height / self.sheet_size[1] * self.sheet_size[0])
+            )
+            point_down = round(
+                min(self.img_height, point_right / self.sheet_size[0] * self.sheet_size[1])
+            )
             ratio_coord = [[0, 0], [0, point_down], [point_right, point_down], [point_right, 0]]
 
         pts1 = np.float32(corners)
@@ -411,8 +463,10 @@ class SheetFilter:
         crop_width = math.ceil(self.img_width * self.edge_crop)
         crop_height = math.ceil(self.img_height * self.edge_crop)
         # y comes first here
-        self.img = self.img[crop_height:(self.img_height-crop_height),
-                            crop_width:(self.img_width-crop_width)]
+        self.img = self.img[
+            crop_height : (self.img_height - crop_height),
+            crop_width : (self.img_width - crop_width),
+        ]
         self.img_width, self.img_height = self.img.shape[::-1]  # type: int, int
 
     def enhance_details(self, darken_percent: int):
@@ -440,16 +494,14 @@ class SheetFilter:
         # width is the first parameter
         if self.img_width < self.img_height:
             return tuple(self.sheet_size)
-        else:
-            return self.sheet_size[1], self.sheet_size[0]
+        return self.sheet_size[1], self.sheet_size[0]
 
     def export_for_tesseract(self) -> np.ndarray:
         img_rgb = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
         return img_rgb
 
-        #self.feat11.save_reference("test_feature.jpg")
-        #self.feat00.save_find_feature_demo(file_path, "test_featurefind00.jpg")
-        #self.feat10.save_find_feature_demo(file_path, "test_featurefind10.jpg")
+        # self.feat11.save_reference("test_feature.jpg")
+        # self.feat00.save_find_feature_demo(file_path, "test_featurefind00.jpg")
+        # self.feat10.save_find_feature_demo(file_path, "test_featurefind10.jpg")
 
-        #self.feat01.save_find_feature_demo(file_path, "test_featurefind01.jpg")
-
+        # self.feat01.save_find_feature_demo(file_path, "test_featurefind01.jpg")
