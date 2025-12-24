@@ -21,8 +21,9 @@ ignore = [
     # TODO: for releasing now - do add documentation later
     "D102",
     "DOC201", "DOC402", "DOC501",
+    "T201",
 ]
-exclude = ["extra/link-visualizer/create_link_svg.py"]  # must be adapted to project first
+#exclude = []
 
 [lint.per-file-ignores]
 "*/tests/**" = ["ARG", "S", "D", "T201"]

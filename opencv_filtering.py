@@ -1,10 +1,8 @@
 import copy
 import math
-import os
 import statistics
 import sys
 from pathlib import Path
-from typing import NoReturn
 
 import cv2
 import numpy as np
@@ -12,17 +10,17 @@ from matplotlib import pyplot as plt
 
 
 class FindFeature:
-    def __init__(self, path_reference_feature: str, ccw_90deg_rotation_steps: int = 0) -> NoReturn:
+    def __init__(self, path_reference_feature: Path, ccw_90deg_rotation_steps: int = 0) -> None:
         """
         :param path_reference_feature: supply feature, complete or relative path, with .jpg file ending
         :param ccw_90deg_rotation_steps: if the expected test-picture is rotated you can state that here
         """
-        if not Path(path_reference_feature).exists():
+        if not path_reference_feature.exists():
             sys.exit(f"Error: input  file '{path_reference_feature}' does not exist")
 
         self.img_static_objects: np.ndarray = None
 
-        img_01 = cv2.imread(path_reference_feature, 0)
+        img_01 = cv2.imread(path_reference_feature.as_posix(), 0)
         self.img_ref_raw: np.ndarray = np.rot90(img_01, ccw_90deg_rotation_steps)
         self.img_ref_positive: np.ndarray = self.enhance_details(self.img_ref_raw.copy())
         self.img_ref_negative: np.ndarray = ~self.img_ref_positive.copy()
@@ -35,32 +33,32 @@ class FindFeature:
         self.threshold_positive = 0.60
         self.threshold_negative = 0.70
 
-    def save_reference(self, file_path: str) -> NoReturn:
+    def save_reference(self, file_path: Path) -> None:
         """
         Process the reference picture and save it to disk
         :param file_path: complete or relative path, with .jpg file ending
         :return: none
         """
-        if file_path[-4:] != ".jpg":
+        if file_path.suffix.lower() != ".jpg":
             sys.exit("Error: output file is not specified as jpg")
 
         img_result = np.vstack((self.img_ref_raw, self.img_ref_positive))
-        cv2.imwrite(file_path, img_result, params=[int(cv2.IMWRITE_JPEG_QUALITY), 90])
+        cv2.imwrite(file_path.as_posix(), img_result, params=[int(cv2.IMWRITE_JPEG_QUALITY), 90])
 
-    def save_find_feature_demo(self, test_file_path: str, save_file_path: str) -> bool:
+    def save_find_feature_demo(self, test_file_path: Path, save_file_path: Path) -> bool:
         """
         Processes test image, find and mark feature if found
         :param test_file_path: path to test image, complete or relative, with file ending
         :param save_file_path: complete or relative path, with .jpg file ending
         :return: True if feature was found
         """
-        if not Path(test_file_path).exists():
+        if not test_file_path.exists():
             sys.exit(f"Error: input  file '{test_file_path}' does not exist")
-        if save_file_path[-4:] != ".jpg":
+        if save_file_path.suffix.lower() != ".jpg":
             sys.exit("Error: output file is not specified as jpg")
 
         # find feature, draw features, save picture
-        img_test_raw = cv2.imread(test_file_path, 0)
+        img_test_raw = cv2.imread(test_file_path.as_posix(), 0)
         img_test_positive = self.enhance_details(img_test_raw.copy())
 
         matches = self.find_feature(img_test_raw)
@@ -78,7 +76,9 @@ class FindFeature:
 
         img_result = np.vstack((img_test_positive, img_test_rect))
 
-        cv2.imwrite(save_file_path, img_result, params=[int(cv2.IMWRITE_JPEG_QUALITY), 90])
+        cv2.imwrite(
+            save_file_path.as_posix(), img_result, params=[int(cv2.IMWRITE_JPEG_QUALITY), 90]
+        )
         return len(matches) > 0
 
     @staticmethod
@@ -123,7 +123,7 @@ class FindFeature:
         image_mask[img_input < cut_position] = 255
         return image_mask
 
-    def debug_details(self, img_input: np.ndarray) -> NoReturn:
+    def debug_details(self, img_input: np.ndarray) -> None:
         """
         Analyze histrogram of current processing pipeline
         :param img_input:
@@ -146,7 +146,9 @@ class FindFeature:
         plt.show()
 
     @staticmethod
-    def get_best_feature(feature_list: list) -> tuple[int, int, float, int, int, float, float]:
+    def get_best_feature(
+        feature_list: list[tuple[int, int, float, int, int, float, float]],
+    ) -> tuple[int, int, float, int, int, float, float]:
         """
         This means the best feature by score (good if you expect one feature per picture)
         :param feature_list: output of find_feature()
@@ -158,9 +160,9 @@ class FindFeature:
 
         score_highest = feature_list[0][6]
         index_highest = 0
-        for index in range(len(feature_list)):
-            if feature_list[index][6] > score_highest:
-                score_highest = feature_list[index][6]
+        for index, feature in enumerate(feature_list):
+            if feature[6] > score_highest:
+                score_highest = feature[6]
                 index_highest = index
         return feature_list[index_highest]
 
@@ -197,7 +199,7 @@ class FindFeature:
         list_match_positive = self.extract_matches(img_match_positive, thresholds[0])
         list_match_negative = self.extract_matches(img_match_negative, thresholds[1])
 
-        list_match = list([])
+        list_match = []
         for match_positive in list_match_positive:
             for index_negative in range(len(list_match_negative)):
                 match = (
@@ -245,7 +247,7 @@ class FindFeature:
         :return: meta data of features
         """
         match = True
-        match_list = list([])
+        match_list = []
 
         while match:
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(img_match)
@@ -265,9 +267,7 @@ class FindFeature:
 
         return match_list
 
-    def train_feature_threshold(
-        self, image_inp: np.ndarray, expected_features: int = 10
-    ) -> NoReturn:
+    def train_feature_threshold(self, image_inp: np.ndarray, expected_features: int = 10) -> None:
         """
         Depending on the image and feature quality you can try to adapt the thresholds with this fn
         :param image_inp: complete or relative path, with file ending
@@ -275,7 +275,7 @@ class FindFeature:
         :return:
         """
 
-        def sort_key(element: tuple) -> float:
+        def sort_key(element: tuple[int, int, float, int, int, float, float]) -> float:
             return element[6]
 
         matches = self.find_feature(
@@ -307,26 +307,24 @@ class FindFeature:
             f"[{round(self.threshold_positive, 4)}; {round(self.threshold_negative, 4)}]"
         )
 
-    def statistics_for_features(self, folder_path: str, expected_features: int = 1) -> NoReturn:
+    def statistics_for_features(self, folder_path: Path, expected_features: int = 1) -> None:
         """
         Get an overview over scores for feature-pics in a special folder. best for pre-sorted stacks of files
         :param folder_path: complete or relative path with "/" termination
         :param expected_features: number of features to expect
         :return:
         """
-        if folder_path[-1] != "/":
-            print("Error: folder-path has to terminated with a '/'.")
+        if not folder_path.is_dir():
+            print("Error: path is no directory.")
             return
 
-        directories_main = [
-            x for x in os.listdir(folder_path) if os.path.isdir(folder_path + x) == False
-        ]
+        directories_main = [x for x in folder_path.iterdir() if x.is_file()]
         matched_counter = 0
         match_scores = []
         miss_scores = []
 
         for file_in_dir in directories_main:
-            feature_list = self.find_feature(folder_path + file_in_dir)
+            feature_list = self.find_feature(file_in_dir)  # TODO: open picture first? or in there?
             if (len(feature_list) >= 1) and (expected_features > 0):
                 for match in range(min(len(feature_list), expected_features)):
                     match_scores.append(feature_list[match][6])
@@ -344,30 +342,34 @@ class FindFeature:
                 f" -> miss  score is {round(min(miss_scores), 3)} min, {round(max(miss_scores), 3)} max, {round(statistics.mean(miss_scores), 3)} mean"
             )
 
-    def train_masking_of_static_objects(self, file_path: str) -> NoReturn:
+    def train_masking_of_static_objects(self, file_path: Path) -> None:
         """
         Supply an image with soft background
         you can even provide a BW image, color is not important as long as the background is dominating (in size)
         :param file_path: complete or relative path, with file ending
         :return: None
         """
-        if not Path(file_path).exists():
+        if not file_path.exists():
             sys.exit(f"Error: file '{file_path}' does not exist")
         self.img_static_objects = None
-        img_raw = cv2.imread(file_path, 0)
+        img_raw = cv2.imread(file_path.as_posix(), 0)
         img_detail = self.enhance_details(img_raw.copy())
         kernel = np.ones((5, 5), np.uint8)
         self.img_static_objects = ~cv2.dilate(img_detail, kernel, iterations=12)
 
-    def save_masking_of_static_objects(self, file_path: str) -> NoReturn:
+    def save_masking_of_static_objects(self, file_path: Path) -> None:
         """
         For faster startup you can save the mask
         :param file_path: complete or relative path, with .jpg file ending
         :return: None
         """
-        if file_path[-4:] != ".jpg":
+        if file_path.suffix.lower() != ".jpg":
             sys.exit("Error: output file is not specified as jpg")
-        cv2.imwrite(file_path, self.img_static_objects, params=[int(cv2.IMWRITE_JPEG_QUALITY), 90])
+        cv2.imwrite(
+            file_path.as_posix(),
+            self.img_static_objects,
+            params=[int(cv2.IMWRITE_JPEG_QUALITY), 90],
+        )
 
 
 class SheetFilter:
@@ -381,9 +383,9 @@ class SheetFilter:
     - feature / Edge must be centered
     """
 
-    def __init__(self, sheet_size: tuple, edge_crop_percent: float = 2):
-        self.feature_path = "feature_paper_edge.png"
-        self.features = [
+    def __init__(self, sheet_size: tuple, edge_crop_percent: float = 2) -> None:
+        self.feature_path = Path(__file__).parent / "feature_paper_edge.png"
+        self.features: list[FindFeature] = [
             FindFeature(self.feature_path, 0),
             FindFeature(self.feature_path, 1),
             FindFeature(self.feature_path, 2),
@@ -398,21 +400,21 @@ class SheetFilter:
         self.feature_offset = self.features[0].img_ref_height / 2
         self.edge_crop = edge_crop_percent / 100
 
-    def open_picture(self, file_path: str) -> NoReturn:
-        if not Path(file_path).exists():
+    def open_picture(self, file_path: Path) -> None:
+        if not file_path.exists():
             sys.exit(f"Error: input  file '{file_path}' does not exist")
 
-        self.img = cv2.imread(file_path, 0)
+        self.img = cv2.imread(file_path.as_posix(), 0)
         self.img_width, self.img_height = self.img.shape[::-1]  # type: int, int
 
-    def train_feature_threshold(self) -> NoReturn:
+    def train_feature_threshold(self) -> None:
         for feature in self.features:
             feature.train_feature_threshold(
                 self.img, expected_features=1
             )  # TODO: optimize this. only load file once
 
     def correct_perspective(self) -> bool:
-        corners = list([])
+        corners = []
         for feature in self.features:
             matches = feature.find_feature(self.img, enable_recursion=True)
             # TODO: correct to report feature-center
@@ -459,7 +461,7 @@ class SheetFilter:
         self.img_width = point_right
         return True
 
-    def crop(self) -> NoReturn:
+    def crop(self) -> None:
         crop_width = math.ceil(self.img_width * self.edge_crop)
         crop_height = math.ceil(self.img_height * self.edge_crop)
         # y comes first here
@@ -473,15 +475,15 @@ class SheetFilter:
         self.img = self.features[0].enhance_details(self.img, darken_percent)
         self.img = ~self.img  # inverse, because enhancement defines background as black
 
-    def demo_enhance_details(self) -> NoReturn:
+    def demo_enhance_details(self) -> None:
         img_copy = copy.deepcopy(self.img)
         for percent in range(0, 100, 5):
             self.enhance_details(percent)
             self.save(f"demo_enhance_details_{percent}%_darkened.jpg")
             self.img = copy.deepcopy(img_copy)
 
-    def save(self, path: str) -> NoReturn:
-        cv2.imwrite(path, self.img, params=[int(cv2.IMWRITE_JPEG_QUALITY), 80])
+    def save(self, path: Path) -> None:
+        cv2.imwrite(path.as_posix(), self.img, params=[int(cv2.IMWRITE_JPEG_QUALITY), 80])
 
     def get_dpi(self) -> int:
         sheet_size = sorted(self.sheet_size)
@@ -490,7 +492,7 @@ class SheetFilter:
         dpi_long = round(25.4 * img_size[1] / sheet_size[1])
         return max(dpi_short, dpi_long)
 
-    def get_size_mm(self) -> tuple:
+    def get_size_mm(self) -> tuple[int, int]:
         # width is the first parameter
         if self.img_width < self.img_height:
             return tuple(self.sheet_size)

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 author: Pure Python
 url: https://www.purepython.org
@@ -26,13 +24,15 @@ On MacOSX install via command line `brew install ghostscript`.
 """
 
 import argparse
-import os.path
 import subprocess
 import sys
+from pathlib import Path
 
 
 class CompressPDF:
-    def __init__(self, compress_level=0, ghostscript_path: str = None, show_info=False):
+    def __init__(
+        self, compress_level: int = 0, ghostscript_path: str = None, *, show_info: bool = False
+    ) -> None:
         self.compress_level = compress_level
 
         if ghostscript_path is None:
@@ -44,7 +44,7 @@ class CompressPDF:
 
         self.show_compress_info = show_info
 
-    def compress(self, file_path_in=None, file_path_out=None, page_size_mm: tuple = None):
+    def compress(self, file_path_in: Path, file_path_out: Path, page_size_mm: tuple | None = None):
         """
         Function to compress PDF via Ghostscript command line interface
         :param page_size_mm: dimensions width * height in mm
@@ -53,18 +53,13 @@ class CompressPDF:
         :return: True or False, to do a cleanup when needed
         """
         try:
-            if not os.path.isfile(file_path_in):
+            if not file_path_in.exists() or not file_path_in.is_file():
                 print("Error: invalid path for input PDF file")
                 sys.exit(1)
 
             # Check if file is a PDF by extension
-            filename, file_extension = os.path.splitext(file_path_in)
-            if file_extension != ".pdf":
+            if file_path_in.suffix.lower() != ".pdf":
                 raise Exception("Error: input file is not a PDF")
-                return False
-
-            if self.show_compress_info:
-                initial_size = os.path.getsize(file_path_in)
 
             pre_opt = [
                 self.gs_path,
@@ -90,7 +85,8 @@ class CompressPDF:
             subprocess.call(pre_opt + [f"-sOutputFile={file_path_out}", file_path_in])
 
             if self.show_compress_info:
-                final_size = os.path.getsize(file_path_out)
+                initial_size = file_path_in.stat().st_size
+                final_size = file_path_out.stat().st_size
                 ratio = 1 - (final_size / initial_size)
                 print(f"Compression by {ratio:.0%}.")
                 print(f"Final file size is {final_size / 1000000:.1f}MB")
@@ -120,22 +116,20 @@ if __name__ == "__main__":
 
     """when where is no start folder full stop!"""
     if args.startFolder is not None and args.startFolder != "":
-        start_folder = args.startFolder
+        start_folder = Path(args.startFolder)
 
         p = CompressPDF(args.compressLevel)
 
-        compress_folder = os.path.join(start_folder, "compressed_folder/")
-        if not os.path.exists(compress_folder):
-            os.makedirs(compress_folder)
+        compress_folder = start_folder.absolute() / "compressed_folder"
+        if not compress_folder.exists():
+            compress_folder.mkdir(parents=True, exist_ok=True)
 
         """Loop within folder over PDF files"""
-        for filename in os.listdir(args.startFolder):
-            my_name, file_extension = os.path.splitext(filename)
-            if file_extension == ".pdf":
-                file = os.path.join(start_folder, filename)
-                new_file = os.path.join(compress_folder, filename)
+        for file_old in start_folder.iterdir():
+            if file_old.suffix.lower() == ".pdf":
+                new_file = compress_folder / file_old.name
 
-                if p.compress(file, new_file):
-                    print(f"{filename} done!")
+                if p.compress(file_old, new_file):
+                    print(f"{file_old.name} done!")
                 else:
-                    print(f"{file} gave an error!")
+                    print(f"{file_old} gave an error!")

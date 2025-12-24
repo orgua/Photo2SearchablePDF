@@ -15,14 +15,15 @@ dependencies = [
     "langid",
     "rake-nltk",
     "numpy",
-    "PIL",
+    #"PIL",
+    "matplotlib",
     # dev
     "prek",  # pre-commit plugin-replacement
     "bump2version",
     "ruff",
     "ty",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 
 [tool.uv]
 package = false
