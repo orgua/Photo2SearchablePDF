@@ -28,17 +28,23 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .logger import log
+
 
 class CompressPDF:
     def __init__(
-        self, compress_level: int = 0, ghostscript_path: str = None, *, show_info: bool = False
+        self,
+        compress_level: int = 0,
+        ghostscript_path: Path | None = None,
+        *,
+        show_info: bool = False,
     ) -> None:
         self.compress_level = compress_level
 
         if ghostscript_path is None:
             self.gs_path = "gs"
         else:
-            self.gs_path = ghostscript_path
+            self.gs_path = ghostscript_path.as_posix()
 
         self.quality = {0: "/default", 1: "/prepress", 2: "/printer", 3: "/ebook", 4: "/screen"}
 
@@ -54,7 +60,7 @@ class CompressPDF:
         """
         try:
             if not file_path_in.exists() or not file_path_in.is_file():
-                print("Error: invalid path for input PDF file")
+                log.error("Error: invalid path for input PDF file")
                 sys.exit(1)
 
             # Check if file is a PDF by extension
@@ -88,14 +94,14 @@ class CompressPDF:
                 initial_size = file_path_in.stat().st_size
                 final_size = file_path_out.stat().st_size
                 ratio = 1 - (final_size / initial_size)
-                print(f"Compression by {ratio:.0%}.")
-                print(f"Final file size is {final_size / 1000000:.1f}MB")
+                log.debug(f"Compression by {ratio:.0%}.")
+                log.debug(f"Final file size is {final_size / 1000000:.1f}MB")
 
             return True
         except Exception as error:
-            print("Caught this error: " + repr(error))
+            log.warning("Caught this error: " + repr(error))
         except subprocess.CalledProcessError:
-            print("Unexpected error:")
+            log.error("Unexpected error:")
             return False
 
 
@@ -130,6 +136,6 @@ if __name__ == "__main__":
                 new_file = compress_folder / file_old.name
 
                 if p.compress(file_old, new_file):
-                    print(f"{file_old.name} done!")
+                    log.debug(f"{file_old.name} done!")
                 else:
-                    print(f"{file_old} gave an error!")
+                    log.warning(f"{file_old} gave an error!")

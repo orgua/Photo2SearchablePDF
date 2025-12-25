@@ -1,23 +1,21 @@
 import time
-from datetime import date
 from pathlib import Path
 
 import pytesseract as pta
-from dateparser.search import search_dates
-from langid.langid import LanguageIdentifier
-from langid.langid import model
-from rake_nltk import (
-    Rake,
-)  # TODO: nltk needs a post-setup: python -c "import nltk; nltk.download('stopwords')"
+from rake_nltk import Rake
 
-from framework_ocr import ocr_osd
-from framework_ocr import ocr_pdf
-from framework_ocr import ocr_text
-from opencv_filtering import SheetFilter
-from pdf_compressor import CompressPDF
+from subsys.image_ocr import ocr_osd
+from subsys.image_ocr import ocr_pdf
+from subsys.image_ocr import ocr_text
+from subsys.language_detection import detect_lang
+from subsys.logger import log
+from subsys.pdf_compressor import CompressPDF
+from subsys.photo_preprocessing import SheetFilter
+from subsys.string_cleaning import import_list
+from subsys.string_cleaning import str_filter
 
 # Config
-pta.pytesseract.tesseract_cmd = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
+pta.pytesseract.tesseract_cmd = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe").as_posix()
 ghostscript_path = Path(r"C:\Program Files\gs\gs9.53.3\bin\gswin64c.exe")
 # +c is the console version
 
@@ -32,17 +30,9 @@ file_path_named = path_here / "2020_F_named/"
 languages = ["deu", "eng"]  # tesseract-format, mixing is possible
 paper_format_mm = (210, 297)
 
-# dateparser should only take full
-dateparser_settings = {
-    "STRICT_PARSING": True,
-    "REQUIRE_PARTS": ["day", "month", "year"],
-    "PREFER_LOCALE_DATE_ORDER": True,
-    "PARSERS": ["custom-formats", "absolute-time"],  # custom-formats, timestamp
-}
 
 custom_keyword_path = path_here / "keywords_custom.txt"
 
-date_year_limits = [2010, date.today().year]  # lower and upper threshold
 
 for language in languages:
     if language not in pta.get_languages():
@@ -50,54 +40,6 @@ for language in languages:
             f"Language '{languages}' is currently not supported, choose one of {pta.get_languages()}"
         )
 languages_pta = "+".join(languages)
-
-langid2nltk_lang_dict = {"de": "german", "en": "english"}
-# TODO: output of one lib does not fit into others
-#   for nltk see https://pypi.org/project/stop-words/
-#   tesseract is even stranger
-
-
-def import_list(file: Path) -> list[str]:
-    with file.open(encoding="utf-8-sig") as logfile:
-        data = logfile.readlines()
-
-    data = [date[0 : date.find("#")] for date in data]  # filter from # anywhere to end of line
-    # data = [date.lower() for date in data]
-
-    data = [date.replace("   ", " ") for date in data]  # 3 spaces
-    data = [date.replace("  ", " ") for date in data]  # 2 spaces
-
-    data = [date.replace(" ", " ") for date in data]  # a special space, looks the same..
-    data = [date.replace("	", " ") for date in data]  # TAB
-
-    data = [date.replace("\n", "") for date in data]
-    data = [date.replace("\r", "") for date in data]
-    data = [date.replace(",", " ") for date in data]
-    data = [date.strip() for date in data]  # remove whitespace from beginning and end
-    data = [date for date in data if len(date) > 0]
-    return data
-
-
-def str_filter(value: str) -> str:
-    value = value.lower()
-    replacements: dict[str, str] = {
-        # newlines
-        "\n": "",
-        "\r": "",
-        # punctuation
-        ".": " ",
-        "!": " ",
-        "?": " ",
-        ",": " ",
-        # special characters
-        "\t": " ",  # TAB
-        " ": " ",  # a special space, looks the same..
-        "   ": " ",  # 3 spaces
-        "  ": " ",  # 2 spaces
-    }
-    for key, value in replacements.items():
-        value = value.replace(key, value)
-    return value
 
 
 if __name__ == "__main__":
@@ -120,16 +62,16 @@ if __name__ == "__main__":
         # use the fast-lane if image exists
         file_name_pdf = file.with_suffix(".pdf").name
         if (file_path_pdf_cmp / file_name_pdf).exists():
-            print(f"skipping {file.name} because resulting pdf already exists")
+            log.debug(f"skipping {file.name} because resulting pdf already exists")
             continue
 
-        print(f"processing {file.name}")
+        log.info(f"processing {file.name}")
         timestamp_start = time.time()
 
         sheet.open_picture(file)
         response = sheet.correct_perspective()
         if not response:
-            print("   -> had trouble correcting the image, will skip this one")
+            log.debug("\t-> had trouble correcting the image, will skip this one")
             continue
 
         sheet.crop()
@@ -141,7 +83,7 @@ if __name__ == "__main__":
             sheet.export_for_tesseract(), file_path_pdf_pta / file_name_pdf, languages_pta
         )
         if not response:
-            print("   -> OCR found no text in image, will skip pdf-generation")
+            log.debug("\t-> OCR found no text in image, will skip pdf-generation")
             continue
 
         pdfc.compress(
@@ -154,46 +96,20 @@ if __name__ == "__main__":
         text_ocr = ocr_text(file_path_jpg_crop / file.name, languages_pta)
         text_filtered = str_filter(text_ocr)
 
-        try:
-            text_lang = lang_id.classify(text_ocr)  # TODO for later: rerun ocr with proper language
-        except KeyError:
-            text_lang = ("en", 0.0)
-
-        if text_lang[0] not in langid2nltk_lang_dict:
-            print(f"  -> WARNING: had an unknown language: {text_lang}")
-            text_lang = ("en", 0.0)
+        lang_id = detect_lang(text_ocr)
 
         rake = Rake(language=langid2nltk_lang_dict[text_lang[0]], min_length=1, max_length=4)
         rake.extract_keywords_from_text(text_ocr)
         text_keywords = rake.get_ranked_phrases()
-        text_dates = search_dates(
-            text_ocr,
-            settings=dateparser_settings,
-            languages=[text_lang[0]],
-            add_detected_language=True,
-        )
 
-        # limit dates and sort from newest to oldest
-        if text_dates:
-            text_datetimes = [x[1] for x in text_dates]
-            # TODO: further limit / filter dates for plausibility - e.g. span of last 5 +- 5 years
-            # TODO: trouble with switched month / day on timestamps with day < 13, e.g. 02.12.2020
-            text_datetimes = [x for x in text_datetimes if x.year >= 1971]
-            text_datetimes = [x for x in text_datetimes if x.year <= date_year_limits[1]]
-            text_datetimes = sorted(text_datetimes, key=lambda p: p.timestamp(), reverse=True)
-            if text_datetimes:
-                date_stamp = text_datetimes[0].strftime("%Y-%m-%d")
-            else:
-                date_stamp = "none"
-        else:
-            date_stamp = "none"
+        date_stamp = extract_date(text_ocr, lang_id)
 
         text_custom_keywords = []
         for keyword in custom_keywords:
             if text_filtered.find(keyword.lower()) >= 0:
                 text_custom_keywords.append(keyword)
 
-        print(f" -> date={date_stamp}, lang={text_lang[0]}, keywords={text_custom_keywords}")
+        log.debug(f" -> date={date_stamp}, lang={text_lang[0]}, keywords={text_custom_keywords}")
 
         text_content = (
             "### Metadata ###\n"
@@ -219,4 +135,4 @@ if __name__ == "__main__":
         with (file_path_named / file_name_txt).open("wb") as f:
             f.write(text_content.encode("utf-8-sig"))
 
-        print(f" -> took {round(time.time() - timestamp_start, 2)} s")
+        log.debug(f"\t-> took {round(time.time() - timestamp_start, 2)} s")

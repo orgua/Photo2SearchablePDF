@@ -8,6 +8,8 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
+from .logger import log
+
 
 class FindFeature:
     def __init__(self, path_reference_feature: Path, ccw_90deg_rotation_steps: int = 0) -> None:
@@ -25,7 +27,8 @@ class FindFeature:
         self.img_ref_positive: np.ndarray = self.enhance_details(self.img_ref_raw.copy())
         self.img_ref_negative: np.ndarray = ~self.img_ref_positive.copy()
 
-        self.img_ref_width, self.img_ref_height = self.img_ref_raw.shape[::-1]  # type: int, int
+        self.img_ref_width: int = self.img_ref_raw.shape[::-1][0]
+        self.img_ref_height: int = self.img_ref_raw.shape[::-1][1]
         self.img_ref_radius: int = round(min(self.img_ref_width, self.img_ref_height) / 3)
 
         self.method: int = cv2.TM_CCORR_NORMED
@@ -155,7 +158,7 @@ class FindFeature:
         :return: best feature in list
         """
         if len(feature_list) < 1:
-            print("Warning: get_nearest_feature was handed an empty feature list")
+            log.warning("Warning: get_nearest_feature was handed an empty feature list")
             return None
 
         score_highest = feature_list[0][6]
@@ -219,13 +222,13 @@ class FindFeature:
 
         if len(list_match) > 0 or recursion_depth >= 5:
             if recursion_depth > 0:
-                print(
+                log.debug(
                     f"   -> found {len(list_match)} features at iteration {recursion_depth} "
                     f"with {np.round(thresholds, 4)} as threshold"
                 )
             return list_match
         if enable_recursion:
-            print(
+            log.warning(
                 f"-> Warning: found no feature in picture with threshold {np.round(thresholds, 4)}, "
                 f"will try again with lower threshold"
             )
@@ -284,12 +287,12 @@ class FindFeature:
         reverse = True
         matches.sort(key=sort_key, reverse=reverse)
         matches = matches[: (expected_features + 4)]
-        print("found the following feature-matches:")
-        print("      x_pos, y_pos, rating_pos, x_neg, y_neg, rating_neg, rating_combined")
+        log.debug("found the following feature-matches:")
+        log.debug("      x_pos, y_pos, rating_pos, x_neg, y_neg, rating_neg, rating_combined")
         for index in range(len(matches)):
             if index is expected_features:
-                print("      === expected features are above ===")
-            print(f"-> {index}: {np.round(matches[index], 4)}")
+                log.debug("      === expected features are above ===")
+            log.debug(f"-> {index}: {np.round(matches[index], 4)}")
 
         if len(matches) > expected_features:
             # mean of last known feature and first non-feature + experimental extra 0.1
@@ -302,7 +305,7 @@ class FindFeature:
         elif matches and reverse:
             self.threshold_positive = matches[-1][2] - 0.25
             self.threshold_negative = matches[-1][5] - 0.25
-        print(
+        log.debug(
             f"Note: trained feature threshold to pos/neg "
             f"[{round(self.threshold_positive, 4)}; {round(self.threshold_negative, 4)}]"
         )
@@ -315,7 +318,7 @@ class FindFeature:
         :return:
         """
         if not folder_path.is_dir():
-            print("Error: path is no directory.")
+            log.error("Error: path is no directory.")
             return
 
         directories_main = [x for x in folder_path.iterdir() if x.is_file()]
@@ -332,13 +335,15 @@ class FindFeature:
             if len(feature_list) >= (expected_features + 1):
                 miss_scores.append(feature_list[expected_features][6])
 
-        print(f"Folder '{folder_path}' had {matched_counter} of {len(directories_main)} matches")
+        log.debug(
+            f"Folder '{folder_path}' had {matched_counter} of {len(directories_main)} matches"
+        )
         if len(match_scores) > 0:
-            print(
+            log.debug(
                 f" -> match score is {round(min(match_scores), 3)} min, {round(max(match_scores), 3)} max, {round(statistics.mean(match_scores), 3)} mean"
             )
         if len(miss_scores) > 0:
-            print(
+            log.debug(
                 f" -> miss  score is {round(min(miss_scores), 3)} min, {round(max(miss_scores), 3)} max, {round(statistics.mean(miss_scores), 3)} mean"
             )
 
@@ -414,7 +419,7 @@ class SheetFilter:
             )  # TODO: optimize this. only load file once
 
     def correct_perspective(self) -> bool:
-        corners = []
+        corners: list[tuple[float, float]] = []
         for feature in self.features:
             matches = feature.find_feature(self.img, enable_recursion=True)
             # TODO: correct to report feature-center
@@ -422,7 +427,7 @@ class SheetFilter:
             best_match = feature.get_best_feature(matches)
             if best_match:
                 corners.append(
-                    [best_match[0] + self.feature_offset, best_match[1] + self.feature_offset]
+                    (best_match[0] + self.feature_offset, best_match[1] + self.feature_offset)
                 )
             else:
                 return False
@@ -442,7 +447,6 @@ class SheetFilter:
             point_down = round(
                 min(self.img_height, point_right / self.sheet_size[1] * self.sheet_size[0])
             )
-            ratio_coord = [[0, 0], [0, point_down], [point_right, point_down], [point_right, 0]]
         else:
             # horizontal paper
             point_right = round(
@@ -451,7 +455,12 @@ class SheetFilter:
             point_down = round(
                 min(self.img_height, point_right / self.sheet_size[0] * self.sheet_size[1])
             )
-            ratio_coord = [[0, 0], [0, point_down], [point_right, point_down], [point_right, 0]]
+        ratio_coord: list[tuple[int, int]] = [
+            (0, 0),
+            (0, point_down),
+            (point_right, point_down),
+            (point_right, 0),
+        ]
 
         pts1 = np.float32(corners)
         pts2 = np.float32(ratio_coord)

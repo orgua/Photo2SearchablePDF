@@ -15,10 +15,12 @@ dependencies = [
     "langid",
     "rake-nltk",
     "numpy",
+    "chromalog",
+    "stop-words",
     #"PIL",
     "matplotlib",
     # dev
-    "prek",  # pre-commit plugin-replacement
+    "prek", # pre-commit plugin-replacement
     "bump2version",
     "ruff",
     "ty",
