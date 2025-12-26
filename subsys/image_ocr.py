@@ -52,7 +52,7 @@ def ocr_pdf(data_inp: Path | np.ndarray, pdf_path_output: Path, lang_ids: str | 
     return True
 
 
-def ocr_osd(data_inp: Path | np.ndarray, lang_ids: str | list[str]) -> str:
+def ocr_osd(data_inp: Path | np.ndarray, lang_ids: str | list[str]) -> str | None:
     """Get statistics about the detected text.
 
     :param data_inp: full or relative path (Path-Obj or string) OR raw image data (numpy ndarray)
@@ -66,7 +66,7 @@ def ocr_osd(data_inp: Path | np.ndarray, lang_ids: str | list[str]) -> str:
         else:
             text = pta.image_to_osd(data_inp, lang=lang_ids)
     except pta.TesseractError:
-        text = ""
+        return None
     return text
 
 

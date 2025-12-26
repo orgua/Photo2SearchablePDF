@@ -32,11 +32,12 @@ def langid2nltk(lang: str) -> str:
 
 
 def langid2tesseract(lang_ids: str | list[str]) -> str:
-    if isinstance(lang_ids, str):
-        lang_ids = [lang_ids]
-    if isinstance(lang_ids, list):
-        lang_ids = [
-            langid2tesseract_dict[lang] for lang in lang_ids if lang in langid2tesseract_dict
-        ]
-        lang_ids = "+".join(lang_ids)
-    return lang_ids
+    langs = lang_ids
+    if isinstance(langs, str):
+        langs = [langs]
+    if isinstance(langs, list):
+        langs = [langid2tesseract_dict[lang] for lang in langs if lang in langid2tesseract_dict]
+    if len(langs) < 1:
+        log.warning(f"\t-> WARNING: unsupported languages detected ({lang_ids}), will enable all")
+        langs = list(langid2tesseract_dict.values())
+    return "+".join(langs)
