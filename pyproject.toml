@@ -17,6 +17,7 @@ dependencies = [
     "numpy",
     "chromalog",
     "stop-words",
+    "typing-extensions",
     #"PIL",
     "matplotlib",
     # dev

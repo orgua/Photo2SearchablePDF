@@ -11,6 +11,21 @@ langid2nltk_dict: dict[str, str] = {"de": "german", "en": "english"}
 
 langid2tesseract_dict: dict[str, str] = {"de": "deu", "en": "eng"}
 
+# ['afr', 'amh', 'ara', 'asm', 'aze', 'aze_cyrl', 'bel', 'ben', 'bod',
+# 'bos', 'bre', 'bul', 'cat', 'ceb', 'ces', 'chi_sim', 'chi_sim_vert',
+# 'chi_tra', 'chi_tra_vert', 'chr', 'cos', 'cym', 'dan', 'deu', 'deu_latf',
+# 'div', 'dzo', 'ell', 'eng', 'enm', 'epo', 'equ', 'est', 'eus', 'fao', 'fas',
+# 'fil', 'fin', 'fra', 'frm', 'fry', 'gla', 'gle', 'glg', 'grc', 'guj', 'hat',
+# 'heb', 'hin', 'hrv', 'hun', 'hye', 'iku', 'ind', 'isl', 'ita', 'ita_old', 'jav',
+# 'jpn', 'jpn_vert', 'kan', 'kat', 'kat_old', 'kaz', 'khm', 'kir', 'kmr', 'kor',
+# 'lao', 'lat', 'lav', 'lit', 'ltz', 'mal', 'mar', 'mkd', 'mlt', 'mon', 'mri', 'msa',
+# 'mya', 'nep', 'nld', 'nor', 'oci', 'ori', 'osd', 'pan', 'pol', 'por', 'pus', 'que',
+# 'ron', 'rus', 'san', 'sin', 'slk', 'slv', 'snd', 'spa', 'spa_old', 'sqi', 'srp', 'srp_latn',
+# 'sun', 'swa', 'swe', 'syr', 'tam', 'tat', 'tel', 'tgk', 'tha', 'tir', 'ton', 'tur', 'uig',
+# 'ukr', 'urd', 'uzb', 'uzb_cyrl', 'vie', 'yid', 'yor']
+# lang_id -> iso 639-1:2002
+# tesseract -> iso 639-2:1998 (similar to 639-3:2007 but the subtypes are missing in tesseract)
+
 lang_id = LanguageIdentifier.from_modelstring(model, norm_probs=True)
 
 
@@ -31,7 +46,8 @@ def langid2nltk(lang: str) -> str:
     return LANGUAGE_MAPPING.get(lang, "english")
 
 
-def langid2tesseract(lang_ids: str | list[str]) -> str:
+def langid2tesseract(lang_ids: str | list[str] = langid2tesseract_dict.keys()) -> str:
+    # TODO: this should also query available / installed lang in tesseract
     langs = lang_ids
     if isinstance(langs, str):
         langs = [langs]

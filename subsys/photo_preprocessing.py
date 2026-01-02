@@ -410,7 +410,7 @@ class SheetFilter:
             sys.exit(f"Error: input  file '{file_path}' does not exist")
 
         self.img = cv2.imread(file_path.as_posix(), 0)
-        self.img_width, self.img_height = self.img.shape[::-1]  # type: int, int
+        self.img_width, self.img_height = self.img.shape[::-1]
 
     def train_feature_threshold(self) -> None:
         for feature in self.features:
@@ -478,7 +478,7 @@ class SheetFilter:
             crop_height : (self.img_height - crop_height),
             crop_width : (self.img_width - crop_width),
         ]
-        self.img_width, self.img_height = self.img.shape[::-1]  # type: int, int
+        self.img_width, self.img_height = self.img.shape[::-1]
 
     def enhance_details(self, darken_percent: int):
         self.img = self.features[0].enhance_details(self.img, darken_percent)
