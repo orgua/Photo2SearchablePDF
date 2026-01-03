@@ -108,6 +108,7 @@ class ImageOCR:
         self.lang_ids = list(langid2tesseract_dict.keys())
         self.langs: str = langid2tesseract(self.lang_ids)
         self.img: ImageFile = Image.open(image_path)
+        # NOTE: just providing a path to tesseract saves RAM but is slower
         self.angle: int = 0
         self.text: str = self._ocr_text(self.img, langs=self.langs)
 

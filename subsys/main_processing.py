@@ -3,7 +3,6 @@ import sys
 import time
 from collections.abc import Iterable
 from collections.abc import Sequence
-from dataclasses import dataclass
 from multiprocessing import Pool
 from pathlib import Path
 from types import FrameType
@@ -17,26 +16,6 @@ from .logger import increase_verbose_level
 from .logger import log
 
 image_suffixes = [".jpg", ".jpeg", ".bmp", ".png", ".tif"]
-
-
-@dataclass(kw_only=True, frozen=True)
-class ImageProcessorConfig:
-    __slots__ = ()
-
-    path: Path
-
-    save_text: bool = True
-    save_pdf: bool = True
-    save_meta: bool = False
-
-    lang_ids: list[str] | str | None = None
-    """ limit detected languages, TODO: really needed?
-
-    - ISO 639-1 language codes (2 letters)
-    - use one or list of many
-    - disabled if None (use all available languages)
-     """
-    lang_id_default: str = "en"
 
 
 def exit_gracefully(_signum: int, _frame: FrameType | None) -> None:
@@ -56,17 +35,33 @@ def get_images(path: Path, *, recurse: bool = False) -> list[Path]:
 
 
 class ImageProcessor:
-    def __init__(self, cfg: ImageProcessorConfig) -> None:
-        self.cfg = cfg
+    def __init__(
+        self,
+        path: Path,
+        *,
+        save_text: bool = True,
+        save_pdf: bool = True,
+        save_meta: bool = True,
+        lang_default: str = "en",
+    ) -> None:
+        if not path.exists():
+            raise FileNotFoundError("Path must exist to be processed! -> provide file or directory")
+        if lang_default not in ["en", "de"]:
+            raise ValueError("Default Language must conform to ISO 639-1 / 2 letter language codes")
+        self.path = path
+        self.save_text = save_text
+        self.save_pdf = save_pdf
+        self.save_meta = save_meta
+        self.lang_default = lang_default
 
     def process_file(self, path: Path) -> None:
         path_pdf = path.with_suffix(".pdf")
         path_text = path.with_suffix(".txt")
         path_meta = path.with_suffix(".yaml")
 
-        need_pdf = self.cfg.save_pdf and not path_pdf.exists()
-        need_text = self.cfg.save_text and not path_text.exists()
-        need_meta = self.cfg.save_meta and not path_meta.exists()
+        need_pdf = self.save_pdf and not path_pdf.exists()
+        need_text = self.save_text and not path_text.exists()
+        need_meta = self.save_meta and not path_meta.exists()
 
         if not (need_pdf or need_text or need_meta):
             return
@@ -117,6 +112,7 @@ class ImageProcessor:
 
             signal.signal(signal.SIGTERM, exit_pool)
             signal.signal(signal.SIGINT, exit_pool)
+            pool.map(self.process_file, files)
 
             progress_bar = tqdm(
                 total=len(files),
@@ -133,11 +129,11 @@ class ImageProcessor:
         signal.signal(signal.SIGINT, exit_gracefully)
 
         timestamp_start = time.time()
-        files = get_images(self.cfg.path)
+        files = get_images(self.path)
 
         if multiprocess:
             self._process_mp(files)
         else:
             self._process_sp(files)
         # TODO: join multi-pdf
-        log.debug(f"\t-> processing took {round(time.time() - timestamp_start, 2)} s")
+        log.info(f"\t-> processing took {round(time.time() - timestamp_start, 2)} s")
