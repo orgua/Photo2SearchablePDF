@@ -5,10 +5,9 @@ import pytesseract as pta
 from PIL import Image
 from PIL.ImageFile import ImageFile
 
-from subsys.language_detection import detect_lang
-from subsys.language_detection import langid2tesseract
-from subsys.language_detection import langid2tesseract_dict
-
+from .language_detection import detect_lang
+from .language_detection import langid2tesseract
+from .language_detection import langid2tesseract_dict
 from .logger import log
 
 # Config

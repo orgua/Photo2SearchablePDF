@@ -4,15 +4,15 @@ from pathlib import Path
 import pytesseract as pta
 from rake_nltk import Rake
 
-from subsys.image_ocr import ocr_osd
-from subsys.image_ocr import ocr_pdf
-from subsys.image_ocr import ocr_text
-from subsys.language_detection import detect_lang
-from subsys.logger import log
-from subsys.pdf_compressor import CompressPDF
-from subsys.photo_preprocessing import SheetFilter
-from subsys.string_cleaning import import_list
-from subsys.string_cleaning import str_filter
+from photo2pdf.image_ocr import ocr_osd
+from photo2pdf.image_ocr import ocr_pdf
+from photo2pdf.image_ocr import ocr_text
+from photo2pdf.language_detection import detect_lang
+from photo2pdf.logger import log
+from photo2pdf.pdf_compressor import CompressPDF
+from photo2pdf.photo_preprocessing import SheetFilter
+from photo2pdf.string_cleaning import import_list
+from photo2pdf.string_cleaning import str_filter
 
 # Config
 pta.pytesseract.tesseract_cmd = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe").as_posix()

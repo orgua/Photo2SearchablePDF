@@ -9,7 +9,7 @@ from .logger import log
 from .main_processing import ImageProcessor
 from .main_processing import activate_exit_handler
 
-cli = typer.Typer(help="Web-Server & -API for the Shepherd-Testbed")
+cli = typer.Typer(help="Creates searchable PDFs from scans or photos of documents")
 
 verbose_opt_t = typer.Option(
     False,  # noqa: FBT003

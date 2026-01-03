@@ -1,6 +1,6 @@
 from rake_nltk import Rake
 
-from subsys.language_detection import langid2nltk
+from .language_detection import langid2nltk
 
 
 def extract_keywords(txt: str, lang_id: str) -> list[str] | None:

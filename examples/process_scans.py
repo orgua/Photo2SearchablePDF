@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from subsys.image_ocr import tesseract_language_query
-from subsys.main_processing import ImageProcessor
+from photo2pdf.image_ocr import tesseract_language_query
+from photo2pdf.main_processing import ImageProcessor
 
 language_ids = tesseract_language_query(["de", "en"])
 

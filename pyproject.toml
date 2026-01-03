@@ -3,8 +3,8 @@
 # uv pip install .
 [project]
 name = "photo2pdf"
-version = "0.0.1"
-description = "Creates searchable PDFs from photos of documents"
+version = "0.1.0"
+description = "Creates searchable PDFs from scans or photos of documents"
 readme = "README.md"
 
 dependencies = [
@@ -21,20 +21,44 @@ dependencies = [
     "typer>=0.21.0",
     "pillow",
     "matplotlib",
-    # dev
+]
+requires-python = ">=3.13"
+
+[project.optional-dependencies]
+dev = [
     "prek", # pre-commit plugin-replacement
     "bump2version",
     "ruff",
     "ty",
 ]
-requires-python = ">=3.13"
+
+test = [
+    "pytest",
+    "pytest-click",
+    "pytest-dependency",
+    "pytest-timeout",
+    "coverage",
+]
+
+all = ["photo2pdf[dev, test]"]
+
+[project.scripts]
+photo2pdf = "photo2pdf.cli:cli"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+platforms = ["unix", "linux", "osx", "cygwin", "win32", "win64"]
+package-dir = {"photo2pdf" = "./photo2pdf/"}
+zip-safe = true
+include-package-data = true
 
 [tool.uv]
 package = false
 
 [tool.uv.sources]
-
-[tool.setuptools]
 
 [tool.ty.environment]
 root = ["./"]
