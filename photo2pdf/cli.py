@@ -4,6 +4,7 @@ from pathlib import Path
 
 import typer
 
+from .image_ocr import OCRLanguages
 from .logger import increase_verbose_level
 from .logger import log
 from .main_processing import ImageProcessor
@@ -39,14 +40,21 @@ def version() -> None:
 
 
 @cli.command()
+def languages() -> None:
+    """Query languages available in Tesseract (OCR Module)"""
+    langs = OCRLanguages()
+    langs.print()
+
+
+@cli.command()
 def process(
-    path: Path | None = None,
+    path: Path | None = typer.Argument(None, help="Path to a directory, file or omit to use CWD"),
     *,
     save_text: bool = False,
     save_meta: bool = False,
     debug: bool = False,
 ) -> None:
-    """OCR Images by either providing a directory, a file or none (use CWD).
+    """OCR Images by either providing a directory, a file or omit to use CWD.
 
     in addition to searchable PDFs, this tool can also
     - save the text content as .txt,

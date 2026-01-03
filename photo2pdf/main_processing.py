@@ -12,7 +12,10 @@ from tqdm import tqdm
 
 from .date_extraction import extract_date
 from .image_ocr import ImageOCR
+from .image_ocr import OCRLanguages
 from .keyword_extraction import extract_keywords
+from .language_detection import detect_lang
+from .language_detection import is_iso639_1
 from .logger import increase_verbose_level
 from .logger import log
 
@@ -52,17 +55,21 @@ class ImageProcessor:
         save_text: bool = True,
         save_pdf: bool = True,
         save_meta: bool = True,
-        lang_default: str = "en",
+        lang_id1_default: str = "en",
     ) -> None:
         if not path.exists():
             raise FileNotFoundError("Path must exist to be processed! -> provide file or directory")
-        if lang_default not in ["en", "de"]:
+        if not is_iso639_1(lang_id1_default):
             raise ValueError("Default Language must conform to ISO 639-1 / 2 letter language codes")
         self.path = path
         self.save_text = save_text
         self.save_pdf = save_pdf
         self.save_meta = save_meta
-        self.lang_default = lang_default
+        self.lang_default = lang_id1_default
+        # TODO: default not used ATM, possible impl:
+        #       use this to limit OCR (intersection with installed Langs)
+        #       despite detected langs
+        self.ocr_langs = OCRLanguages()
 
     def process_file(self, path: Path) -> None:
         path_pdf = path.with_suffix(".pdf")
@@ -78,8 +85,12 @@ class ImageProcessor:
 
         log.debug(f"processing {path.name}")
         ocr = ImageOCR(path)
-        lang_id = ocr.detect_lang_id()  # TODO: add lang_ids config and default lang
         content = ocr.get_content()
+        lang_id1 = detect_lang(content)
+        if self.ocr_langs.query(lang_id1) is not None:
+            ocr.set_language(self.ocr_langs.langid1_to_tesseract(lang_id1))
+            # TODO: add lang_ids config and default lang
+            content = ocr.get_content()
 
         if need_pdf:
             ocr.save_pdf(path_pdf)
@@ -95,10 +106,10 @@ class ImageProcessor:
             return
 
         # get metadata, TODO: safe in yaml
-        keywords = extract_keywords(content, lang_id)
+        keywords = extract_keywords(content, lang_id1)
         if keywords is not None and len(keywords) > 0:
             log.debug(f"\t-> found keywords: {keywords}")
-        date_str = extract_date(content, lang_id)
+        date_str = extract_date(content, lang_id1)
         if date_str is not None:
             log.debug(f"\t-> extracting date: {date_str}")
         osd = ocr.get_osd()

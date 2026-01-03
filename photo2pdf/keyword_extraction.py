@@ -10,7 +10,7 @@ def extract_keywords(txt: str, lang_id: str) -> list[str] | None:
     except LookupError as e:
         import nltk
 
-        nltk.download("stopwords")  # preload extra resources
+        nltk.download("stopwords")
         nltk.download("punkt_tab")
-        raise RuntimeError("downloaded nltk stopwords - please run again") from e
+        raise RuntimeError("sideloaded nltk resources - please run again") from e
     return rake.get_ranked_phrases()
