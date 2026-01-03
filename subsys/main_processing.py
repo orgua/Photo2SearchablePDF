@@ -1,6 +1,7 @@
 import signal
 import sys
 import time
+from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Sequence
 from multiprocessing import Pool
@@ -21,6 +22,15 @@ image_suffixes = [".jpg", ".jpeg", ".bmp", ".png", ".tif"]
 def exit_gracefully(_signum: int, _frame: FrameType | None) -> None:
     log.warning("Exiting!")
     sys.exit(0)
+
+
+def activate_exit_handler(custom: Callable | None = None) -> None:
+    if custom is None:
+        custom = exit_gracefully
+    signal.signal(signal.SIGTERM, custom)
+    signal.signal(signal.SIGINT, custom)
+    if hasattr(signal, "SIGALRM"):
+        signal.signal(signal.SIGALRM, custom)
 
 
 def get_images(path: Path, *, recurse: bool = False) -> list[Path]:
@@ -97,11 +107,13 @@ class ImageProcessor:
         # TODO: optimize detection by rotation, BW, inversion?
 
     def _process_sp(self, files: Iterable[Path]) -> None:
+        """Single process Images (slower, more verbose, saves RAM)."""
         increase_verbose_level(3)
         for file in tqdm(files, desc="OCR Images", unit="n", leave=False):
             self.process_file(file)
 
     def _process_mp(self, files: Sequence[Path]) -> None:
+        """Multiprocess Images in a worker-pool (auto-adjusting to CPU)."""
         with Pool() as pool:
             log.info(f"Multiprocessing with {pool._processes} workers")
 
@@ -110,10 +122,7 @@ class ImageProcessor:
                 log.warning("Exiting!")
                 sys.exit(0)
 
-            signal.signal(signal.SIGTERM, exit_pool)
-            signal.signal(signal.SIGINT, exit_pool)
-            pool.map(self.process_file, files)
-
+            activate_exit_handler(exit_pool)
             progress_bar = tqdm(
                 total=len(files),
                 desc="OCR Images",
@@ -125,8 +134,8 @@ class ImageProcessor:
                 progress_bar.update(n=1)
 
     def process(self, *, multiprocess: bool = True) -> None:
-        signal.signal(signal.SIGTERM, exit_gracefully)
-        signal.signal(signal.SIGINT, exit_gracefully)
+        """Main processing routine."""
+        activate_exit_handler()
 
         timestamp_start = time.time()
         files = get_images(self.path)

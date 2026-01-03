@@ -18,7 +18,8 @@ dependencies = [
     "chromalog",
     "stop-words",
     "typing-extensions",
-    #"PIL",
+    "typer>=0.21.0",
+    "pillow",
     "matplotlib",
     # dev
     "prek", # pre-commit plugin-replacement
