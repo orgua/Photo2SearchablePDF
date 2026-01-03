@@ -1,7 +1,6 @@
 from pathlib import Path
 from warnings import deprecated
 
-import numpy as np
 import pytesseract as pta
 from PIL import Image
 from PIL.ImageFile import ImageFile
@@ -36,66 +35,6 @@ def tesseract_language_query(lang_ids: list[str]) -> list[str]:
     return ids_new
 
 
-@deprecated("use class")
-def ocr_pdf(data_inp: Path | np.ndarray, pdf_path_output: Path, lang_ids: str | list[str]) -> bool:
-    """Create a searchable PDF.
-
-    :param data_inp: full or relative path (Path-Obj or string) OR raw image data (numpy ndarray)
-    :param pdf_path_output: full or relative path (Path-Obj or string)
-    :param lang_ids: short-name in tesseract format, like "deu" or "eng+fra"
-    :return: True if extraction worked, False otherwise
-    """
-    lang_ids = langid2tesseract(lang_ids)
-    try:
-        if isinstance(data_inp, Path) and data_inp.exists() and data_inp.is_file():
-            pdf = pta.image_to_pdf_or_hocr(Image.open(data_inp), extension="pdf", lang=lang_ids)
-        else:
-            pdf = pta.image_to_pdf_or_hocr(data_inp, extension="pdf", lang=lang_ids)
-    except pta.TesseractError:
-        return False
-    with pdf_path_output.open("w+b") as f:
-        f.write(pdf)
-    return True
-
-
-@deprecated("use class")
-def ocr_osd(data_inp: Path | np.ndarray, lang_ids: str | list[str]) -> str | None:
-    """Get statistics about the detected text.
-
-    :param data_inp: full or relative path (Path-Obj or string) OR raw image data (numpy ndarray)
-    :param lang_ids: short-name in tesseract format, like "deu" or "eng+fra"
-    :return: string with statistics
-    """
-    lang_ids = langid2tesseract(lang_ids)
-    try:
-        if isinstance(data_inp, Path) and data_inp.exists() and data_inp.is_file():
-            text = pta.image_to_osd(Image.open(data_inp), lang=lang_ids)
-        else:
-            text = pta.image_to_osd(data_inp, lang=lang_ids)
-    except pta.TesseractError:
-        return None
-    return text
-
-
-@deprecated("use class")
-def ocr_text(data_inp: Path | np.ndarray, lang_ids: str | list[str]) -> str | None:
-    """Extract plain text as string.
-
-    :param data_inp: full or relative path (Path-Obj or string) OR raw image data (numpy ndarray)
-    :param lang_ids: short-name in tesseract format, like "deu" or "eng+fra"
-    :return: string with detected text
-    """
-    lang_ids = langid2tesseract(lang_ids)
-    try:
-        if isinstance(data_inp, Path) and data_inp.exists() and data_inp.is_file():
-            text = pta.image_to_string(Image.open(data_inp), lang=lang_ids)
-        else:
-            text = pta.image_to_string(data_inp, lang=lang_ids)
-    except pta.TesseractError:
-        return None
-    return text
-
-
 class ImageOCR:
     """OCR class to extract text from image."""
 
@@ -111,25 +50,6 @@ class ImageOCR:
         # NOTE: just providing a path to tesseract saves RAM but is slower
         self.angle: int = 0
         self.text: str = self._ocr_text(self.img, langs=self.langs)
-
-    @deprecated("tesseract rotates on its own")
-    def optimize_angle(self) -> int:
-        angles = [0, 90, 180, 270]
-        fav = (self.angle, self.text)
-        for angle in angles:
-            if angle == fav[0]:
-                continue
-            rimg = self.img.rotate(angle, expand=True)
-            rtext = self._ocr_text(rimg, langs=self.langs)
-            lang_id = detect_lang(rtext)
-            if lang_id is not None and len(rtext) > 1.1 * len(fav[1]):
-                fav = (angle, rtext)
-        if fav[0] != self.angle:
-            log.debug(f"corrected angle to {fav[0]} - {len(self.text)} vs {len(fav[1])} words")
-            self.angle = fav[0]
-            self.text = fav[1]
-            self.img = self.img.rotate(fav[0], expand=True)
-        return self.angle
 
     @staticmethod
     def _ocr_text(image: ImageFile, langs: str) -> str:
@@ -163,7 +83,7 @@ class ImageOCR:
             path_output = self.path.with_suffix(".txt")
         if path_output.exists():
             log.debug(f"File exists, won't overwrite ({path_output})")
-            return None
+            return False
         try:
             pdf = pta.image_to_pdf_or_hocr(self.img, extension="pdf", lang=self.langs)
         except pta.TesseractError:
